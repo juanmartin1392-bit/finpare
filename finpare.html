@@ -979,6 +979,8 @@ const CATEGORIES = [
 function start() {
   S.sb = window.sb;
   if (!S.sb) {
+    document.getElementById('setup').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
     document.getElementById('setup-first').style.display='none';
     document.getElementById('setup-who').style.display='none';
     document.getElementById('setup-conn-err-wrap').style.display='block';
@@ -1049,6 +1051,7 @@ function showWhoPicker() {
 }
 function showConnErr(msg) {
   document.getElementById('setup').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
   document.getElementById('setup-first').classList.add('hidden');
   document.getElementById('setup-who').classList.add('hidden');
   document.getElementById('setup-conn-err-wrap').style.display='block';
@@ -1781,11 +1784,20 @@ window.saveExpense = async function() {
         affects_income_base: S.affectsBase,
         is_fixed: S.isFixedFlow
       };
+      // If turning OFF fixed flag, also unlink template
+      if (wasFixed && !S.isFixedFlow) {
+        data.template_id = null;
+      }
       const { error } = await S.sb.from('expenses').update(data).eq('id', S.editingId);
       if (error) throw error;
 
-      // If editing a fixed expense linked to a template, also update template
-      if (S.editingTpl) {
+      // If now NOT fixed but had a template, delete the template
+      if (wasFixed && !S.isFixedFlow && S.editingTpl) {
+        await S.sb.from('fixed_template').delete().eq('id', S.editingTpl);
+        S.template = (S.template||[]).filter(t => t.id !== S.editingTpl);
+      }
+      // If still fixed and linked to template, update template
+      else if (S.editingTpl && S.isFixedFlow) {
         const tplPatch = {
           name: desc, category: S.expCat, paid_by: S.paidBy,
           repeat_value: S.repeatValue,
@@ -1793,9 +1805,22 @@ window.saveExpense = async function() {
         };
         const { error: e2 } = await S.sb.from('fixed_template').update(tplPatch).eq('id', S.editingTpl);
         if (e2) console.error('tpl update', e2);
-        // Refresh template
         const r = await S.sb.from('fixed_template').select('*').order('sort_order',{ascending:true});
         if (r.data) S.template = r.data;
+      }
+      // If becomes fixed (was variable, now fixed), create template
+      else if (!wasFixed && S.isFixedFlow) {
+        const sortMax = (S.template||[]).reduce((m,t)=>Math.max(m, t.sort_order||0), 0);
+        const tplIns = await S.sb.from('fixed_template').insert({
+          name: desc, category: S.expCat,
+          amount: S.repeatValue ? amt : 0,
+          paid_by: S.paidBy, sort_order: sortMax + 1,
+          repeat_value: S.repeatValue
+        }).select().single();
+        if (tplIns.data) {
+          await S.sb.from('expenses').update({ template_id: tplIns.data.id }).eq('id', S.editingId);
+          S.template = [...(S.template||[]), tplIns.data];
+        }
       }
       toast('✓ Actualizado');
       closeM('add-modal');
@@ -2134,46 +2159,24 @@ window.delTplItem = async function(id, name) {
 };
 
 window.addTplItem = function() {
-  const name = prompt('Nombre del nuevo gasto fijo:');
-  if (!name) return;
-  const amtStr = prompt('Importe en € (puede ser 0):');
-  const amt = +amtStr || 0;
-  const who = prompt('¿Quién paga? Escribe "a" para ' + nameOf('a') + ', "b" para ' + nameOf('b') + ', o "common" para cuenta común:', 'common');
-  if (!who || !['a','b','common'].includes(who)) { toast('Opción inválida'); return; }
-  const sortMax = (S.template||[]).reduce((m,t)=>Math.max(m, t.sort_order||0), 0);
-  S.sb.from('fixed_template').insert({
-    name, category: 'otro', amount: amt, paid_by: who, sort_order: sortMax+1
-  }).select().single().then(r => {
-    if (r.error) { toast('Error: '+r.error.message); return; }
-    S.template = [...(S.template||[]), r.data];
-    // Also add to current month
-    S.sb.from('expenses').insert({
-      month: S.month, amount: amt, description: name,
-      date: `${S.month}-01`, category: 'otro', type: 'shared', paid_by: who,
-      is_fixed: true, is_rent: false, affects_income_base: false
-    }).then(() => {
-      renderTplList();
-      toast('✓ Añadido');
-    });
-  });
+  // Close template editor first, then open add modal in fixed mode
+  closeM('detail-modal');
+  openAdd('expense');
+  setTimeout(() => {
+    if (!S.isFixedFlow) toggleIsFixed();
+    setExpType('shared');
+  }, 50);
 };
 
 window.addFixedItem = function() {
-  // Same as addTplItem but adds only to this month (not template)
-  const name = prompt('Nombre del gasto fijo (solo para este mes):');
-  if (!name) return;
-  const amtStr = prompt('Importe en € (puede ser 0):');
-  const amt = +amtStr || 0;
-  const who = prompt('¿Quién paga? Escribe "a" para ' + nameOf('a') + ', "b" para ' + nameOf('b') + ', o "common" para cuenta común:', 'common');
-  if (!who || !['a','b','common'].includes(who)) { toast('Opción inválida'); return; }
-  S.sb.from('expenses').insert({
-    month: S.month, amount: amt, description: name,
-    date: `${S.month}-01`, category: 'otro', type: 'shared', paid_by: who,
-    is_fixed: true, is_rent: false, affects_income_base: false
-  }).then(r => {
-    if (r.error) { toast('Error: '+r.error.message); return; }
-    toast('✓ Añadido a este mes');
-  });
+  // Open the unified add modal with isFixed pre-activated
+  openAdd('expense');
+  // Activate fixed toggle automatically
+  setTimeout(() => {
+    if (!S.isFixedFlow) toggleIsFixed();
+    // Pre-select shared (fixed expenses are typically shared)
+    setExpType('shared');
+  }, 50);
 };
 
 // =================== AJUSTES ===================
