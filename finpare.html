@@ -39,10 +39,10 @@ window.SUPABASE_KEY  = "sb_publishable_a3U_ts937IiXBmf8H9TGbg_7DCPTz16";
   --danger-soft:#FCEDEC;
   --ok:#2D7A52;
   --ok-soft:#D6EDDF;
-  --a:#2D7A52;
-  --a-soft:#D6EDDF;
-  --b:#9A7220;
-  --b-soft:#F5E9CC;
+  --a:#9A7220;
+  --a-soft:#F5E9CC;
+  --b:#2D7A52;
+  --b-soft:#D6EDDF;
   --common:#2D7A52;
   --common-soft:#D6EDDF;
   --text:#1A1A1A;
@@ -141,8 +141,8 @@ button{font-family:inherit;}
   padding:6px 12px;border-radius:20px;cursor:pointer;
 }
 .tb-who-dot{width:8px;height:8px;border-radius:50%;}
-.tb-who-dot.a{background:#6BBF8E;}
-.tb-who-dot.b{background:#E5C878;}
+.tb-who-dot.a{background:#E5C878;}
+.tb-who-dot.b{background:#6BBF8E;}
 .tb-who-name{color:white;font-size:13px;font-weight:500;}
 
 .month-bar{
@@ -249,8 +249,9 @@ button{font-family:inherit;}
 .swipe-wrap{position:relative;overflow:hidden;border-radius:var(--r-sm);margin-bottom:8px;}
 .swipe-del-bg{
   position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--danger);
-  display:flex;align-items:center;justify-content:center;color:white;font-size:22px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;font-size:22px;
   border-radius:0 var(--r-sm) var(--r-sm) 0;
+  opacity:0;transition:opacity 0.1s;
 }
 .swipe-item{
   position:relative;transition:transform 0.2s ease;background:white;
@@ -1754,8 +1755,8 @@ function renderHomeSummary(c) {
 function renderExpList() {
   const nA_ = nameOf('a'), nB_ = nameOf('b');
 
-  // 1) FIXED list — minimal style, name clickable for full edit, amount inline editable
-  const fxItems = S.expenses.filter(e => e.is_fixed === true)
+  // 1) FIXED list — solo fijos compartidos (los personales van a su pestaña)
+  const fxItems = S.expenses.filter(e => e.is_fixed === true && e.type === 'shared')
     .sort((a,b) => (a.description||'').localeCompare(b.description||''));
   const fxEl = document.getElementById('fix-list');
   if (fxEl) {
@@ -1792,8 +1793,8 @@ function renderExpList() {
     }
   }
 
-  // 2) VARIABLE list (non-fixed expenses)
-  const varItems = S.expenses.filter(e => !e.is_fixed)
+  // 2) VARIABLE list — solo gastos compartidos (no personales en la vista común)
+  const varItems = S.expenses.filter(e => !e.is_fixed && e.type === 'shared')
     .sort((a,b) => (b.date||'').localeCompare(a.date||''));
   const varEl = document.getElementById('exp-list');
   if (varEl) {
@@ -1826,9 +1827,9 @@ function renderExpList() {
     }
   }
 
-  // Actualizar totales
-  const totalFijos = S.expenses.filter(e => e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
-  const totalVars = S.expenses.filter(e => !e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
+  // Actualizar totales (solo gastos compartidos en vista común)
+  const totalFijos = S.expenses.filter(e => e.is_fixed && e.type === 'shared').reduce((s,e)=>s+(+e.amount||0),0);
+  const totalVars = S.expenses.filter(e => !e.is_fixed && e.type === 'shared').reduce((s,e)=>s+(+e.amount||0),0);
   const totalMes = totalFijos + totalVars;
   const gtEl = document.getElementById('gastos-totales');
   if (gtEl) {
@@ -2022,6 +2023,13 @@ window.setExpType = function(t) {
 
 window.closeM = function(id) {
   document.getElementById(id).classList.remove('open');
+  // Restore any hidden form elements (personal mode cleanup)
+  if (id === 'add-modal') {
+    const typeWrap = document.querySelector('#form-expense .fg:first-child');
+    if (typeWrap) typeWrap.style.display = '';
+    const paidByWrap = document.getElementById('paidby-grid')?.closest('.fg');
+    if (paidByWrap) paidByWrap.style.display = '';
+  }
   // Only remove modal-open if no other modals are open
   if (!document.querySelector('.mov.open')) {
     document.body.classList.remove('modal-open');
@@ -2759,48 +2767,99 @@ function renderResumenGeneral(c) {
 
 // =================== SWIPE TO DELETE ===================
 function initSwipeDelete(container) {
-  container.querySelectorAll('.swipe-item').forEach(item => {
-    let startX = 0, startY = 0, dx = 0, swiping = false;
+  container.querySelectorAll('.swipe-item').forEach(item => initSwipeItem(item));
+}
 
-    item.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      dx = 0; swiping = false;
-    }, {passive:true});
+function initSwipeItem(item) {
+  let startX = 0, startY = 0, dx = 0;
+  let direction = null; // null | 'h' | 'v'
+  let vibrated = false;
+  const REVEAL = 72;      // px to fully reveal delete bg
+  const THRESHOLD = 160;  // px to confirm delete (needs deliberate intent)
+  const bg = item.parentElement?.querySelector('.swipe-del-bg');
 
-    item.addEventListener('touchmove', e => {
-      const curX = e.touches[0].clientX;
-      const curY = e.touches[0].clientY;
-      dx = curX - startX;
-      const dy = Math.abs(curY - startY);
-      if (!swiping && Math.abs(dx) < 5) return;
-      if (dy > Math.abs(dx) * 1.5) return; // vertical scroll, ignore
-      swiping = true;
-      if (dx < 0) {
-        const pull = Math.max(dx, -120);
-        item.style.transform = `translateX(${pull}px)`;
-        item.style.transition = 'none';
-        // Show danger color on bg when past threshold
-        const bg = item.parentElement?.querySelector('.swipe-del-bg');
-        if (bg) bg.style.background = dx < -80 ? 'var(--danger)' : 'rgba(184,48,48,0.6)';
-      }
-    }, {passive:true});
+  const reset = () => {
+    item.style.transition = 'transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94)';
+    item.style.transform = '';
+    if (bg) { bg.style.opacity = '0'; bg.style.background = ''; }
+    setTimeout(() => { item.style.transition = ''; }, 320);
+    vibrated = false;
+    direction = null;
+    dx = 0;
+  };
 
-    item.addEventListener('touchend', async () => {
-      item.style.transition = '';
-      if (dx < -100) {
-        // Confirmed delete
-        item.classList.add('swiped');
-        const id = item.dataset.id;
-        const kind = item.dataset.kind;
-        await swipeDelete(id, kind, item);
+  item.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dx = 0; direction = null; vibrated = false;
+    item.style.transition = 'none';
+    if (bg) bg.style.transition = 'none';
+  }, {passive: true});
+
+  item.addEventListener('touchmove', e => {
+    const cx = e.touches[0].clientX;
+    const cy = e.touches[0].clientY;
+    const absDX = Math.abs(cx - startX);
+    const absDY = Math.abs(cy - startY);
+
+    // Lock direction on first 8px of movement
+    if (direction === null) {
+      if (absDX < 8 && absDY < 8) return;
+      direction = absDX >= absDY * 1.2 ? 'h' : 'v';
+    }
+    if (direction !== 'h') return;
+
+    dx = cx - startX;
+    if (dx > 0) { dx = 0; return; } // no rightward swipe
+
+    const absD = Math.abs(dx);
+
+    // Two-zone movement: fluid until REVEAL, then resistance
+    let visual;
+    if (absD <= REVEAL) {
+      visual = dx;
+    } else {
+      const extra = absD - REVEAL;
+      visual = -(REVEAL + extra * 0.25); // strong resistance after reveal
+    }
+    visual = Math.max(visual, -(THRESHOLD + 30));
+    item.style.transform = `translateX(${visual}px)`;
+
+    // Background opacity: 0→1 as we go from 0→REVEAL
+    if (bg) {
+      const opacity = Math.min(absD / REVEAL, 1);
+      bg.style.opacity = String(opacity);
+
+      if (absD >= THRESHOLD) {
+        // CONFIRMED ZONE: red + vibration once
+        bg.style.background = 'var(--danger)';
+        bg.innerHTML = '<span style="font-size:22px;">🗑️</span><span style="font-size:11px;font-weight:700;margin-top:2px;display:block;">Soltar</span>';
+        if (!vibrated) {
+          vibrated = true;
+          navigator.vibrate && navigator.vibrate([15]);
+        }
       } else {
-        // Spring back
-        item.style.transform = '';
-        const bg = item.parentElement?.querySelector('.swipe-del-bg');
-        if (bg) bg.style.background = '';
+        bg.style.background = 'rgba(184,48,48,0.75)';
+        bg.innerHTML = '🗑️';
+        vibrated = false;
       }
-    });
+    }
+  }, {passive: true});
+
+  item.addEventListener('touchend', async () => {
+    if (direction !== 'h') return;
+
+    if (dx <= -THRESHOLD) {
+      // CONFIRMED: animate out fully then delete
+      item.style.transition = 'transform 0.18s ease';
+      item.style.transform = `translateX(-120%)`;
+      const id = item.dataset.id;
+      const kind = item.dataset.kind;
+      setTimeout(() => swipeDelete(id, kind, item), 180);
+    } else {
+      // Spring back
+      reset();
+    }
   });
 }
 
@@ -3139,40 +3198,84 @@ window.setGastoTab = function(tab) {
 
 function renderPersonalLists() {
   ['a','b'].forEach(p => {
-    const items = S.expenses.filter(e => e.type === 'personal' && e.paid_by === p && !e.is_fixed)
+    const color = p === 'a' ? 'var(--a)' : 'var(--b)';
+    const colorSoft = p === 'a' ? 'var(--a-soft)' : 'var(--b-soft)';
+
+    // Fixed personal items for this person
+    const fixedItems = S.expenses.filter(e => e.is_fixed === true && e.type === 'personal' && e.paid_by === p)
+      .sort((a,b) => (a.description||'').localeCompare(b.description||''));
+
+    // Variable personal items
+    const varItems = S.expenses.filter(e => !e.is_fixed && e.type === 'personal' && e.paid_by === p)
       .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
     const listEl = document.getElementById('personal-list-' + p);
     const totalEl = document.getElementById('personal-total-' + p);
     const totalValEl = document.getElementById('personal-total-' + p + '-val');
     if (!listEl) return;
 
-    if (!items.length) {
-      listEl.innerHTML = `<div class="empty" style="padding:30px 20px;"><div class="empty-i">📭</div><p>Sin gastos personales<br>este mes</p></div>`;
-      if (totalEl) totalEl.style.display = 'none';
-      return;
+    let html = '';
+
+    // ─── Sección fijos ───
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:14px 18px 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);">
+      <span>Fijos personales</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <button onclick="addPersonalFixedItem('${p}')" style="background:${color};color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">+ Fijo</button>
+    </div>`;
+
+    if (!fixedItems.length) {
+      html += `<div style="padding:10px 18px 4px;font-size:13px;color:var(--text-3);">Sin fijos personales este mes</div>`;
+    } else {
+      html += `<div style="padding:0 14px;">` + fixedItems.map(it => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:var(--r-sm);margin-bottom:6px;box-shadow:var(--shadow-1);">
+          <div style="font-size:18px;width:26px;text-align:center;flex-shrink:0;">${getCatIcon(it)}</div>
+          <div style="flex:1;min-width:0;cursor:pointer;" onclick="showExpDetail('${it.id}')">
+            <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(it.description||'Fijo personal')}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">
+            <input type="number" inputmode="decimal" step="0.01" min="0"
+              value="${(+it.amount).toFixed(2)}"
+              style="width:75px;border:none;background:${colorSoft};text-align:right;font-family:'Fraunces',serif;font-size:18px;font-weight:400;color:var(--text);outline:none;padding:6px 8px;border-radius:8px;-moz-appearance:textfield;"
+              onfocus="this.select()"
+              onblur="updateFixedAmount('${it.id}',this.value)"
+              onkeydown="if(event.key==='Enter')this.blur()">
+            <span style="font-size:13px;color:var(--text-3);">€</span>
+          </div>
+        </div>`).join('') + `</div>`;
     }
 
-    listEl.innerHTML = items.map(it => {
-      return `<div class="swipe-wrap">
-        <div class="swipe-del-bg">🗑️</div>
-        <div class="swipe-item exp" style="margin-bottom:0;border-radius:var(--r-sm);" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp">
-          <div class="exp-cat">${getCatIcon(it)}</div>
-          <div class="exp-info">
-            <div class="exp-desc">${escapeHtml(it.description || getCatIcon(it))}</div>
-            <div class="exp-meta">
-              <span class="tag personal">Personal</span>
-              <span>${fdate(it.date)}</span>
+    // ─── Sección variables ───
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:14px 18px 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);margin-top:8px;">
+      <span>Variables personales</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>`;
+
+    if (!varItems.length) {
+      html += `<div class="empty" style="padding:24px 20px;"><div class="empty-i">📭</div><p>Sin gastos variables<br>este mes</p></div>`;
+    } else {
+      html += varItems.map(it => `
+        <div class="swipe-wrap" style="padding:0 14px 0;">
+          <div class="swipe-del-bg">🗑️</div>
+          <div class="swipe-item exp" style="margin-bottom:8px;border-radius:var(--r-sm);" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp">
+            <div class="exp-cat">${getCatIcon(it)}</div>
+            <div class="exp-info">
+              <div class="exp-desc">${escapeHtml(it.description || 'Gasto personal')}</div>
+              <div class="exp-meta"><span>${fdate(it.date)}</span></div>
             </div>
+            <div class="exp-amt">${eur(it.amount)}</div>
           </div>
-          <div class="exp-amt">${eur(it.amount)}</div>
-        </div>
-      </div>`;
-    }).join('');
+        </div>`).join('');
+    }
 
-    initSwipeDelete(listEl);
+    listEl.innerHTML = html;
+    listEl.querySelectorAll('.swipe-wrap').forEach(wrap => {
+      const item = wrap.querySelector('.swipe-item');
+      if (item) initSwipeItem(item);
+    });
 
-    const total = items.reduce((s,e) => s + (+e.amount||0), 0);
-    if (totalEl) totalEl.style.display = 'block';
+    const total = [...fixedItems, ...varItems].reduce((s,e) => s + (+e.amount||0), 0);
+    const hasItems = fixedItems.length + varItems.length > 0;
+    if (totalEl) totalEl.style.display = hasItems ? 'block' : 'none';
     if (totalValEl) totalValEl.textContent = eur(total);
   });
 }
@@ -3180,8 +3283,44 @@ function renderPersonalLists() {
 window.openAddPersonal = function(person) {
   openAdd('expense');
   setTimeout(() => {
-    setExpType('personal');
-    setPaidBy(person);
+    // Force personal + this person — no need to show the selectors
+    S.expType = 'personal';
+    S.paidBy = person;
+    // Hide type selector (always personal)
+    const typeWrap = document.querySelector('#form-expense .fg:first-child');
+    if (typeWrap) typeWrap.style.display = 'none';
+    // Hide paid-by selector (always this person)
+    const paidByWrap = document.getElementById('paidby-grid')?.closest('.fg');
+    if (paidByWrap) paidByWrap.style.display = 'none';
+    // Hide common account option
+    document.getElementById('pb-common').style.display = 'none';
+    document.getElementById('affects-base-wrap').classList.remove('hidden');
+    document.getElementById('tg-affects').classList.toggle('on', false);
+    S.affectsBase = false;
+    // Mark active state on grids even if hidden (for save logic)
+    document.querySelectorAll('[data-type]').forEach(o => o.classList.toggle('active', o.dataset.type === 'personal'));
+    document.querySelectorAll('[data-who]').forEach(o => o.classList.toggle('active', o.dataset.who === person));
+    // Update title
+    document.getElementById('add-ttl').textContent = `Gasto personal · ${nameOf(person)}`;
+  }, 30);
+};
+
+window.addPersonalFixedItem = function(person) {
+  openAdd('expense');
+  setTimeout(() => {
+    // Same as openAddPersonal but also activate fixed toggle
+    S.expType = 'personal';
+    S.paidBy = person;
+    const typeWrap = document.querySelector('#form-expense .fg:first-child');
+    if (typeWrap) typeWrap.style.display = 'none';
+    const paidByWrap = document.getElementById('paidby-grid')?.closest('.fg');
+    if (paidByWrap) paidByWrap.style.display = 'none';
+    document.getElementById('pb-common').style.display = 'none';
+    document.querySelectorAll('[data-type]').forEach(o => o.classList.toggle('active', o.dataset.type === 'personal'));
+    document.querySelectorAll('[data-who]').forEach(o => o.classList.toggle('active', o.dataset.who === person));
+    document.getElementById('add-ttl').textContent = `Fijo personal · ${nameOf(person)}`;
+    // Activate fixed toggle
+    if (!S.isFixedFlow) toggleIsFixed();
   }, 30);
 };
 
@@ -3245,36 +3384,56 @@ function initModalDragClose() {
     const sheet = modal.querySelector('.msh');
     const handle = modal.querySelector('.mh');
     if (!sheet || !handle) return;
-
-    let startY = 0, dy = 0, dragging = false;
     const modalId = modal.id;
 
-    // Larger hit area — the handle zone (first 60px of sheet)
-    handle.style.padding = '16px 40px';
-    handle.style.margin = '0 auto';
+    let startY = 0, dy = 0, dragging = false;
+
+    // Bigger hit area for the handle pill
+    handle.style.padding = '14px 60px';
     handle.style.cursor = 'grab';
+    handle.style.marginTop = '-14px';
 
     handle.addEventListener('touchstart', e => {
+      if (sheet.scrollTop > 2) return; // don't drag when scrolled inside
       startY = e.touches[0].clientY;
       dy = 0; dragging = true;
       sheet.style.transition = 'none';
-    }, {passive:true});
+    }, {passive: true});
 
     handle.addEventListener('touchmove', e => {
       if (!dragging) return;
       dy = e.touches[0].clientY - startY;
-      if (dy > 0) sheet.style.transform = `translateY(${dy}px)`;
-    }, {passive:true});
+      if (dy < 0) dy = 0;
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, {passive: true});
 
     handle.addEventListener('touchend', () => {
       if (!dragging) return;
       dragging = false;
-      sheet.style.transition = '';
-      if (dy > 80) {
-        closeM(modalId);
-        setTimeout(() => { sheet.style.transform = ''; }, 300);
+      if (dy > 90) {
+        // Animate sheet fully down, THEN remove open class and clean up inline styles
+        sheet.style.transition = 'transform 0.24s ease';
+        sheet.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+          // Now safe to remove open without CSS fighting inline style
+          modal.classList.remove('open');
+          sheet.style.transform = '';
+          sheet.style.transition = '';
+          if (!document.querySelector('.mov.open')) {
+            document.body.classList.remove('modal-open');
+          }
+          if (modalId === 'add-modal') {
+            const typeWrap = document.querySelector('#form-expense .fg:first-child');
+            if (typeWrap) typeWrap.style.display = '';
+            const paidByWrap = document.getElementById('paidby-grid')?.closest('.fg');
+            if (paidByWrap) paidByWrap.style.display = '';
+          }
+        }, 240);
       } else {
-        sheet.style.transform = '';
+        // Spring back
+        sheet.style.transition = 'transform 0.24s cubic-bezier(0.25,0.46,0.45,0.94)';
+        sheet.style.transform = 'translateY(0)';
+        setTimeout(() => { sheet.style.transition = ''; }, 260);
       }
     });
   });
