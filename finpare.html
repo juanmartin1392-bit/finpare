@@ -63,6 +63,9 @@ window.SUPABASE_KEY  = "sb_publishable_a3U_ts937IiXBmf8H9TGbg_7DCPTz16";
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 input[type="number"]{-moz-appearance:textfield;}
 input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+/* Numeric text inputs (iOS fix) */
+input.num-input{-moz-appearance:textfield;appearance:none;}
+input.num-input::-webkit-outer-spin-button,input.num-input::-webkit-inner-spin-button{-webkit-appearance:none;}
 html,body{height:100%;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);overflow:hidden;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;}
 button{font-family:inherit;}
 
@@ -155,9 +158,14 @@ button{font-family:inherit;}
 
 /* Bottom nav */
 .bnav{
-  position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:white;
+  position:fixed;bottom:0;left:0;right:0;background:white;
   border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;
   padding:0 4px env(safe-area-inset-bottom,0px);z-index:100;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px));
+}
+@media (display-mode: standalone){
+  .bnav{ height:calc(var(--nav-h) + env(safe-area-inset-bottom,0px)); }
+  .content{ padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom,0px) + 16px); }
 }
 .nb{
   display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 14px;cursor:pointer;
@@ -236,6 +244,20 @@ button{font-family:inherit;}
 .cm-amount.neg{color:var(--danger);}
 .cm-amount.pos{color:var(--ok);}
 .cm-detail{font-size:12px;color:var(--text-3);margin-top:2px;}
+
+/* Swipe to delete */
+.swipe-wrap{position:relative;overflow:hidden;border-radius:var(--r-sm);margin-bottom:8px;}
+.swipe-del-bg{
+  position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--danger);
+  display:flex;align-items:center;justify-content:center;color:white;font-size:22px;
+  border-radius:0 var(--r-sm) var(--r-sm) 0;
+}
+.swipe-item{
+  position:relative;transition:transform 0.2s ease;background:white;
+  border-radius:var(--r-sm);box-shadow:var(--shadow-1);
+  will-change:transform;
+}
+.swipe-item.swiped{transform:translateX(-80px);}
 
 /* Empty state */
 .empty{text-align:center;padding:48px 20px;color:var(--text-3);}
@@ -380,9 +402,16 @@ button{font-family:inherit;}
 .mov{
   position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;
   display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.22s;
-  overflow:hidden;
+  overflow:hidden;touch-action:none;
 }
 .mov.open{opacity:1;pointer-events:all;}
+.msh{
+  background:white;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;
+  transform:translateY(100%);transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  padding-bottom:max(env(safe-area-inset-bottom,16px),16px);
+  touch-action:pan-y;overscroll-behavior:contain;
+}
+.mov.open .msh{transform:translateY(0);}
 body.modal-open{overflow:hidden;position:fixed;width:100%;}
 .msh{
   background:white;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;
@@ -532,19 +561,19 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <div style="text-align:center;padding:10px 4px;border-radius:var(--r-sm);cursor:text;" onclick="document.getElementById('income-a-input').focus()">
               <div style="font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:var(--a);margin-bottom:6px;" id="ic-name-a">Juan Martín</div>
-              <input type="number" inputmode="decimal" step="0.01" min="0" id="income-a-input"
+              <input type="text" inputmode="decimal" id="income-a-input"
                 placeholder="0"
-                style="width:100%;border:none;background:transparent;outline:none;font-family:'Fraunces',serif;font-size:30px;font-weight:300;text-align:center;color:var(--text);padding:0;appearance:none;-moz-appearance:textfield;"
-                onfocus="this.select()" oninput="this.value=this.value.replace(/,/g,'.')" onblur="saveIncome('a',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                style="width:100%;border:none;background:transparent;outline:none;font-family:'Fraunces',serif;font-size:30px;font-weight:300;text-align:center;color:var(--text);padding:0;"
+                onfocus="this.select()" oninput="normalizeNum(this)" onblur="saveIncome('a',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
               <div style="font-size:14px;color:var(--text-3);margin-top:2px;">€</div>
               <div id="ic-status-a" style="font-size:11px;color:var(--text-2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft,#F0EBDF);min-height:14px;"></div>
             </div>
             <div style="text-align:center;padding:10px 4px;border-radius:var(--r-sm);cursor:text;" onclick="document.getElementById('income-b-input').focus()">
               <div style="font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:var(--b);margin-bottom:6px;" id="ic-name-b">Clémentine</div>
-              <input type="number" inputmode="decimal" step="0.01" min="0" id="income-b-input"
+              <input type="text" inputmode="decimal" id="income-b-input"
                 placeholder="0"
-                style="width:100%;border:none;background:transparent;outline:none;font-family:'Fraunces',serif;font-size:30px;font-weight:300;text-align:center;color:var(--text);padding:0;appearance:none;-moz-appearance:textfield;"
-                onfocus="this.select()" oninput="this.value=this.value.replace(/,/g,'.')" onblur="saveIncome('b',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                style="width:100%;border:none;background:transparent;outline:none;font-family:'Fraunces',serif;font-size:30px;font-weight:300;text-align:center;color:var(--text);padding:0;"
+                onfocus="this.select()" oninput="normalizeNum(this)" onblur="saveIncome('b',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
               <div style="font-size:14px;color:var(--text-3);margin-top:2px;">€</div>
               <div id="ic-status-b" style="font-size:11px;color:var(--text-2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft,#F0EBDF);min-height:14px;"></div>
             </div>
@@ -589,6 +618,12 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
       <div class="card">
         <div class="card-t">Resumen del mes</div>
         <div id="home-summary"><div class="loading"><div class="spin"></div></div></div>
+      </div>
+
+      <!-- Resumen general visual -->
+      <div class="card" id="resumen-general-card">
+        <div class="card-t">Vista general</div>
+        <div id="resumen-general"><div class="loading"><div class="spin"></div></div></div>
       </div>
     </div>
 
@@ -822,7 +857,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 
         <div class="fg">
           <label>Importe (€)</label>
-          <input type="number" id="exp-amt" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.')" style="font-size:24px;font-weight:700;text-align:center;">
+          <input type="text" inputmode="decimal" id="exp-amt" placeholder="0,00" oninput="normalizeNum(this)" style="font-size:24px;font-weight:700;text-align:center;">
         </div>
 
         <div class="fg">
@@ -922,7 +957,13 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <!-- Importe único (common o person) -->
         <div id="con-simple-amt" class="fg">
           <label>Importe total (€)</label>
-          <input type="number" id="con-amt" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.');updateConSplit()" style="font-size:24px;font-weight:700;text-align:center;">
+          <input type="text" inputmode="decimal" id="con-amt" placeholder="0,00" oninput="normalizeNum(this);updateConSplit()" style="font-size:24px;font-weight:700;text-align:center;">
+        </div>
+
+        <!-- Sugerido de deuda actual -->
+        <div id="con-debt-hint" style="display:none;background:var(--primary-soft);border-radius:var(--r-xs);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--primary);">
+          <div style="font-weight:600;margin-bottom:4px;">💡 Tu deuda estimada este mes:</div>
+          <div id="con-debt-hint-body" style="color:var(--text-2);line-height:1.6;"></div>
         </div>
 
         <!-- Importes split -->
@@ -930,11 +971,11 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div class="fg" style="margin-bottom:0">
               <label id="con-split-person-label" style="color:var(--b)">A la otra persona (€)</label>
-              <input type="number" id="con-amt-person" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.');updateConTotal()" style="font-size:20px;font-weight:700;text-align:center;">
+              <input type="text" inputmode="decimal" id="con-amt-person" placeholder="0,00" oninput="normalizeNum(this);updateConTotal()" style="font-size:20px;font-weight:700;text-align:center;">
             </div>
             <div class="fg" style="margin-bottom:0">
               <label style="color:var(--common)">A cuenta común (€)</label>
-              <input type="number" id="con-amt-common" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.');updateConTotal()" style="font-size:20px;font-weight:700;text-align:center;">
+              <input type="text" inputmode="decimal" id="con-amt-common" placeholder="0,00" oninput="normalizeNum(this);updateConTotal()" style="font-size:20px;font-weight:700;text-align:center;">
             </div>
           </div>
           <div style="text-align:center;padding:10px;background:var(--bg-soft);border-radius:var(--r-xs);font-size:13px;color:var(--text-2);">
@@ -1036,7 +1077,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 
       <div class="fg" style="margin-top:12px;">
         <label>Importe (€)</label>
-        <input type="number" id="fondo-amt" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.')" style="font-size:22px;font-weight:700;text-align:center;">
+        <input type="text" inputmode="decimal" id="fondo-amt" placeholder="0,00" oninput="normalizeNum(this)" style="font-size:22px;font-weight:700;text-align:center;">
       </div>
       <div class="fg">
         <label>Nota (opcional)</label>
@@ -1524,6 +1565,7 @@ function render() {
   renderCommon(c);
   renderFondo();
   renderHomeSummary(c);
+  renderResumenGeneral(c);
   renderExpList();
   renderMes(c);
 }
@@ -1673,19 +1715,23 @@ function renderExpList() {
         const tagL = it.type === 'shared' ? 'Compartido' : 'Personal';
         const who = it.paid_by === 'common' ? 'Cta. común' : nameOf(it.paid_by);
         const whoTag = it.paid_by === 'common' ? 'common' : it.paid_by;
-        return `<div class="exp" onclick="showExpDetail('${it.id}')">
-          <div class="exp-cat">${cat.i}</div>
-          <div class="exp-info">
-            <div class="exp-desc">${escapeHtml(it.description || cat.l)}</div>
-            <div class="exp-meta">
-              <span class="tag ${tag}">${tagL}</span>
-              <span class="tag ${whoTag}">${who}</span>
-              <span>${fdate(it.date)}</span>
+        return `<div class="swipe-wrap">
+          <div class="swipe-del-bg">🗑️</div>
+          <div class="swipe-item exp" style="margin-bottom:0;border-radius:var(--r-sm);" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp">
+            <div class="exp-cat">${cat.i}</div>
+            <div class="exp-info">
+              <div class="exp-desc">${escapeHtml(it.description || cat.l)}</div>
+              <div class="exp-meta">
+                <span class="tag ${tag}">${tagL}</span>
+                <span class="tag ${whoTag}">${who}</span>
+                <span>${fdate(it.date)}</span>
+              </div>
             </div>
+            <div class="exp-amt">${eur(it.amount)}</div>
           </div>
-          <div class="exp-amt">${eur(it.amount)}</div>
         </div>`;
       }).join('');
+      initSwipeDelete(varEl);
     }
   }
 
@@ -1710,18 +1756,24 @@ function renderExpList() {
     } else {
       conEl.innerHTML = conItems.map(it => {
         const who = nameOf(it.person);
-        return `<div class="exp" onclick="showConDetail('${it.id}')">
-          <div class="exp-cat" style="background:var(--accent-soft)">🏦</div>
-          <div class="exp-info">
-            <div class="exp-desc">${escapeHtml(it.note || 'Aporte a cuenta común')}</div>
-            <div class="exp-meta">
-              <span class="tag ${it.person}">${who}</span>
-              <span>${fdate(it.date)}</span>
+        const destLabel = it.dest === 'person' ? `→ ${nameOf(it.person==='a'?'b':'a')}` : '→ Cuenta común';
+        return `<div class="swipe-wrap">
+          <div class="swipe-del-bg">🗑️</div>
+          <div class="swipe-item exp" style="margin-bottom:0;border-radius:var(--r-sm);" onclick="showConDetail('${it.id}')" data-id="${it.id}" data-kind="con">
+            <div class="exp-cat" style="background:var(--accent-soft)">🏦</div>
+            <div class="exp-info">
+              <div class="exp-desc">${escapeHtml(it.note || 'Aporte')}</div>
+              <div class="exp-meta">
+                <span class="tag ${it.person}">${who}</span>
+                <span style="font-size:11px;color:var(--text-3);">${destLabel}</span>
+                <span>${fdate(it.date)}</span>
+              </div>
             </div>
+            <div class="exp-amt contrib">+${eur(it.amount)}</div>
           </div>
-          <div class="exp-amt contrib">+${eur(it.amount)}</div>
         </div>`;
       }).join('');
+      initSwipeDelete(conEl);
     }
   }
 }
@@ -1902,6 +1954,17 @@ window.setPaidBy = function(p) {
 window.setCWho = function(p) {
   S.cWho = p;
   document.querySelectorAll('[data-cwho]').forEach(o => o.classList.toggle('active', o.dataset.cwho === p));
+  // Update all labels that reference the other person
+  const otherName = nameOf(p === 'a' ? 'b' : 'a');
+  const lbl = document.getElementById('con-dest-person-label');
+  if (lbl) lbl.textContent = `👤 Solo a ${otherName}`;
+  const splitLbl = document.getElementById('con-split-person-label');
+  if (splitLbl) {
+    splitLbl.textContent = `A ${otherName} (€)`;
+    splitLbl.style.color = p === 'a' ? 'var(--b)' : 'var(--a)';
+  }
+  // Update debt hint
+  updateDebtHint(p);
 };
 window.toggleAffectsBase = function() {
   S.affectsBase = !S.affectsBase;
@@ -2090,6 +2153,8 @@ window.saveContrib = async function() {
     closeM('add-modal');
     await loadMonth();
     render();
+    // Check if overpaid → suggest fondo
+    if (!S.editingId) setTimeout(() => checkFondoSuggestion(S.cWho, 0), 400);
   } catch(e) { toast('Error: '+e.message); console.error(e); }
 };
 
@@ -2558,6 +2623,115 @@ function downloadCSV(rows, name) {
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 }
 
+// =================== RESUMEN GENERAL ===================
+function renderResumenGeneral(c) {
+  const el = document.getElementById('resumen-general');
+  if (!el) return;
+  const nA = nameOf('a'), nB = nameOf('b');
+  const fondoSaldo = calcFondoSaldo();
+  const totalFijos = S.expenses.filter(e => e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
+  const totalVars = S.expenses.filter(e => !e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
+
+  const row = (label, value, color='var(--text)', sub='') => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border-soft);">
+      <div>
+        <div style="font-size:13px;color:var(--text-2);">${label}</div>
+        ${sub ? `<div style="font-size:11px;color:var(--text-3);margin-top:1px;">${sub}</div>` : ''}
+      </div>
+      <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:400;color:${color};">${value}</div>
+    </div>`;
+
+  const commonOk = Math.abs(c.commonBalance) < 0.5;
+  const commonColor = c.commonBalance < -0.5 ? 'var(--danger)' : c.commonBalance > 0.5 ? 'var(--ok)' : 'var(--text-3)';
+  const commonLabel = c.commonBalance < -0.5 ? `Falta ${eur(Math.abs(c.commonBalance))}` : c.commonBalance > 0.5 ? `Sobran ${eur(c.commonBalance)}` : 'Cuadrada ✓';
+
+  el.innerHTML =
+    row('📦 Gastos fijos', eur(totalFijos)) +
+    row('🛒 Gastos variables', eur(totalVars)) +
+    row('📊 Total gastos', eur(totalFijos + totalVars), 'var(--primary)') +
+    row(`💙 Aporte ${nA}`, eur(c.conA), 'var(--a)', `Obligación: ${eur(c.oblA)}`) +
+    row(`💜 Aporte ${nB}`, eur(c.conB), 'var(--b)', `Obligación: ${eur(c.oblB)}`) +
+    row('🏦 Cuenta común', commonLabel, commonColor) +
+    (fondoSaldo > 0.5 ? row('💰 Fondo acumulado', eur(fondoSaldo), 'var(--ok)') : '') +
+    (c.isSettled ? `<div style="text-align:center;padding:12px 0 4px;font-size:13px;color:var(--ok);font-weight:600;">✓ Todo cuadrado este mes</div>` :
+      `<div style="padding:10px 0 4px;font-size:13px;color:var(--danger);font-weight:600;text-align:center;">⚡ ${nameOf(c.debtor)} debe transferir ${eur(c.totalTransfer)}</div>`);
+}
+
+// =================== SWIPE TO DELETE ===================
+function initSwipeDelete(container) {
+  container.querySelectorAll('.swipe-item').forEach(item => {
+    let startX = 0, startY = 0, dx = 0, swiping = false;
+
+    item.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dx = 0; swiping = false;
+    }, {passive:true});
+
+    item.addEventListener('touchmove', e => {
+      const curX = e.touches[0].clientX;
+      const curY = e.touches[0].clientY;
+      dx = curX - startX;
+      const dy = Math.abs(curY - startY);
+      if (!swiping && Math.abs(dx) < 5) return;
+      if (dy > Math.abs(dx) * 1.5) return; // vertical scroll, ignore
+      swiping = true;
+      if (dx < 0) {
+        item.style.transform = `translateX(${Math.max(dx, -80)}px)`;
+        item.style.transition = 'none';
+      }
+    }, {passive:true});
+
+    item.addEventListener('touchend', async () => {
+      item.style.transition = '';
+      if (dx < -50) {
+        // Confirmed delete
+        item.classList.add('swiped');
+        const id = item.dataset.id;
+        const kind = item.dataset.kind;
+        await swipeDelete(id, kind, item);
+      } else {
+        item.style.transform = '';
+      }
+    });
+  });
+}
+
+async function swipeDelete(id, kind, el) {
+  try {
+    if (kind === 'exp') {
+      const exp = S.expenses.find(x => x.id === id);
+      if (exp?.is_fixed) {
+        // For fixed: ask about template too
+        const wrap = el.closest('.swipe-wrap');
+        if (wrap) wrap.style.transition = 'height 0.3s, opacity 0.3s';
+        const r = await S.sb.from('expenses').delete().eq('id', id);
+        if (r.error) throw r.error;
+      } else {
+        const r = await S.sb.from('expenses').delete().eq('id', id);
+        if (r.error) throw r.error;
+      }
+    } else {
+      const r = await S.sb.from('contributions').delete().eq('id', id);
+      if (r.error) throw r.error;
+    }
+    // Animate out
+    const wrap = el.closest('.swipe-wrap');
+    if (wrap) {
+      wrap.style.height = wrap.offsetHeight + 'px';
+      wrap.style.overflow = 'hidden';
+      wrap.style.transition = 'height 0.25s, opacity 0.25s';
+      requestAnimationFrame(() => { wrap.style.height = '0'; wrap.style.opacity = '0'; });
+      setTimeout(async () => { await loadMonth(); render(); }, 280);
+    }
+    toast('Eliminado');
+  } catch(e) { 
+    el.style.transform = '';
+    el.classList.remove('swiped');
+    toast('Error: '+e.message); 
+  }
+}
+
 // =================== FONDO ACUMULADO ===================
 function calcFondoSaldo() {
   return S.fondo.reduce((s, r) => {
@@ -2685,13 +2859,8 @@ window.setConDest = function(dest) {
   const isSplit = dest === 'split';
   document.getElementById('con-simple-amt').classList.toggle('hidden', isSplit);
   document.getElementById('con-split-amts').classList.toggle('hidden', !isSplit);
-  // Update label for "person" destination
-  const otherName = nameOf(S.cWho === 'a' ? 'b' : 'a');
-  const lbl = document.getElementById('con-dest-person-label');
-  if (lbl) lbl.textContent = `👤 Solo a ${otherName}`;
-  const splitLbl = document.getElementById('con-split-person-label');
-  if (splitLbl) splitLbl.style.color = S.cWho === 'a' ? 'var(--b)' : 'var(--a)';
-  if (splitLbl) splitLbl.textContent = `A ${otherName} (€)`;
+  document.getElementById('con-debt-hint').style.display = isSplit ? 'block' : 'none';
+  if (isSplit && S.cWho) updateDebtHint(S.cWho);
 };
 
 window.updateConTotal = function() {
@@ -2704,6 +2873,58 @@ window.updateConTotal = function() {
 window.updateConSplit = function() { /* placeholder for future auto-split */ };
 
 // =================== HELPERS ===================
+// Normalize decimal input (comma or dot → dot, only digits and one dot)
+function normalizeNum(inp) {
+  let v = inp.value.replace(/[^0-9.,]/g,'').replace(',','.');
+  // Only one dot allowed
+  const parts = v.split('.');
+  if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+  inp.value = v;
+}
+
+function updateDebtHint(who) {
+  const hint = document.getElementById('con-debt-hint-body');
+  if (!hint) return;
+  const c = calc();
+  const obl = who === 'a' ? c.oblA : c.oblB;
+  const out = who === 'a' ? c.outA : c.outB;
+  const deficit = obl - out;
+  const otherName = nameOf(who === 'a' ? 'b' : 'a');
+  if (deficit <= 0.5 && Math.abs(c.commonBalance) < 0.5) {
+    hint.innerHTML = `Ya estás al día ✓`;
+  } else {
+    let lines = '';
+    if (c.transferToCreditor > 0.5 && c.creditor !== who) {
+      lines += `→ A ${otherName}: <strong>${eur(c.transferToCreditor)}</strong><br>`;
+    }
+    if (c.transferToCommon > 0.5) {
+      lines += `→ A cuenta común: <strong>${eur(c.transferToCommon)}</strong><br>`;
+    }
+    if (!lines) lines = `Pendiente: <strong>${eur(Math.max(deficit, 0))}</strong>`;
+    hint.innerHTML = lines + `<span style="font-size:11px;">Total sugerido: <strong>${eur(c.totalTransfer)}</strong></span>`;
+  }
+}
+
+async function checkFondoSuggestion(who, amtPaid) {
+  // After saving a contribution, check if person overpaid and suggest fondo
+  const c = calc();
+  const out = who === 'a' ? c.outA : c.outB;
+  const obl = who === 'a' ? c.oblA : c.oblB;
+  const excess = out - obl;
+  if (excess > 0.5 && c.isSettled) {
+    if (confirm(`Has aportado ${eur(excess)} más de lo necesario. ¿Añadirlo al fondo acumulado?`)) {
+      const today = new Date().toISOString().split('T')[0];
+      await S.sb.from('common_fund').insert({
+        type: 'add', amount: +excess.toFixed(2),
+        note: `Sobrante de ${nameOf(who)} — ${S.month}`,
+        date: today, month: S.month
+      });
+      await loadMonth();
+      render();
+      toast('✓ Añadido al fondo');
+    }
+  }
+}
 function eur(n) {
   return new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR' }).format(+n||0);
 }
