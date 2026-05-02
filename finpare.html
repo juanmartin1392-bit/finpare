@@ -154,7 +154,7 @@ button{font-family:inherit;}
 .mb-label{font-size:15px;font-weight:500;color:white;min-width:140px;text-align:center;}
 .mb-today{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;text-align:center;height:0;overflow:visible;position:relative;top:-3px;}
 
-.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + 32px + env(safe-area-inset-bottom,20px));}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px));}
 
 /* Bottom nav */
 .bnav{
@@ -535,7 +535,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
   <!-- Top bar -->
   <div class="topbar">
     <div class="topbar-row">
-      <div class="tb-logo">Manejo<em>Gastos</em> 🌿 <span style="font-size:11px;opacity:0.5;font-family:'DM Sans',sans-serif;font-weight:400;">v3.2</span></div>
+      <div class="tb-logo">Manejo<em>Gastos</em> 🌿 <span style="font-size:11px;opacity:0.5;font-family:'DM Sans',sans-serif;font-weight:400;">v3.3</span></div>
       <button class="tb-who" onclick="nav('ajustes',document.getElementById('nb-ajustes'))" style="background:rgba(255,255,255,0.12);border:none;color:white;padding:6px 12px;border-radius:20px;font-size:14px;cursor:pointer;">⚙️</button>
     </div>
     <div class="month-bar">
@@ -795,7 +795,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
       <span class="nb-i">🏦</span><span class="nb-l">Aportes</span>
     </button>
     <button class="nb" id="nb-mes" onclick="nav('mes',this)">
-      <span class="nb-i">📅</span><span class="nb-l">Mes</span>
+      <span class="nb-i">🗓️</span><span class="nb-l">Mes</span>
     </button>
     <button class="nb" id="nb-ajustes" onclick="nav('ajustes',this)">
       <span class="nb-i">⚙️</span><span class="nb-l">Ajustes</span>
@@ -1492,13 +1492,25 @@ function calc() {
   const paidCommon = shared.filter(e => e.paid_by==='common').reduce((s,e)=>s+(+e.amount),0);
 
   // Contributions to common
-  const conA = S.contribs.filter(c => c.person==='a').reduce((s,c)=>s+(+c.amount),0);
-  const conB = S.contribs.filter(c => c.person==='b').reduce((s,c)=>s+(+c.amount),0);
-  const totalCon = conA + conB;
+  // Split contributions by destination
+  const conA_common = S.contribs.filter(c => c.person==='a' && c.dest !== 'person').reduce((s,c)=>s+(+c.amount),0);
+  const conB_common = S.contribs.filter(c => c.person==='b' && c.dest !== 'person').reduce((s,c)=>s+(+c.amount),0);
+  const conA_person = S.contribs.filter(c => c.person==='a' && c.dest === 'person').reduce((s,c)=>s+(+c.amount),0);
+  const conB_person = S.contribs.filter(c => c.person==='b' && c.dest === 'person').reduce((s,c)=>s+(+c.amount),0);
 
-  // Total each person has put out (including contributions to common)
-  const outA = paidPersA + conA;
-  const outB = paidPersB + conB;
+  // For display purposes
+  const conA = conA_common + conA_person;
+  const conB = conB_common + conB_person;
+
+  // Only common-destined contributions count toward common balance
+  const totalCon = conA_common + conB_common;
+
+  // Total each person effectively paid:
+  // A paid: direct expenses + common contributions + money sent to B
+  // B paid: direct expenses + common contributions + money sent to A
+  //         MINUS money received from the other person
+  const outA = paidPersA + conA_common + conA_person - conB_person;
+  const outB = paidPersB + conB_common + conB_person - conA_person;
 
   // Net per person: positive = creditor (overpaid), negative = debtor (owes)
   const netA = outA - oblA;
