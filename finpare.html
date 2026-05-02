@@ -39,10 +39,10 @@ window.SUPABASE_KEY  = "sb_publishable_a3U_ts937IiXBmf8H9TGbg_7DCPTz16";
   --danger-soft:#FCEDEC;
   --ok:#2D7A52;
   --ok-soft:#D6EDDF;
-  --a:#3B5BA5;
-  --a-soft:#DEE6F2;
-  --b:#B85F7C;
-  --b-soft:#F2DEE5;
+  --a:#2D7A52;
+  --a-soft:#D6EDDF;
+  --b:#9A7220;
+  --b-soft:#F5E9CC;
   --common:#2D7A52;
   --common-soft:#D6EDDF;
   --text:#1A1A1A;
@@ -141,8 +141,8 @@ button{font-family:inherit;}
   padding:6px 12px;border-radius:20px;cursor:pointer;
 }
 .tb-who-dot{width:8px;height:8px;border-radius:50%;}
-.tb-who-dot.a{background:#7AA8E5;}
-.tb-who-dot.b{background:#E5A0B5;}
+.tb-who-dot.a{background:#6BBF8E;}
+.tb-who-dot.b{background:#E5C878;}
 .tb-who-name{color:white;font-size:13px;font-weight:500;}
 
 .month-bar{
@@ -535,7 +535,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
   <!-- Top bar -->
   <div class="topbar">
     <div class="topbar-row">
-      <div class="tb-logo">Manejo<em>Gastos</em> 🌿 <span style="font-size:11px;opacity:0.5;font-family:'DM Sans',sans-serif;font-weight:400;">v3.3</span></div>
+      <div class="tb-logo">Manejo<em>Gastos</em> 🌿 <span style="font-size:11px;opacity:0.5;font-family:'DM Sans',sans-serif;font-weight:400;">v3.4</span></div>
       <button class="tb-who" onclick="nav('ajustes',document.getElementById('nb-ajustes'))" style="background:rgba(255,255,255,0.12);border:none;color:white;padding:6px 12px;border-radius:20px;font-size:14px;cursor:pointer;">⚙️</button>
     </div>
     <div class="month-bar">
@@ -599,14 +599,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <div class="cm-card" id="common-monitor"><div class="loading"><div class="spin"></div></div></div>
       </div>
 
-      <!-- Fondo acumulado -->
-      <div class="card" id="fondo-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div class="card-t" style="margin-bottom:0">Fondo acumulado</div>
-          <button onclick="openFondoModal()" style="background:var(--primary-soft);color:var(--primary);border:none;border-radius:var(--r-xs);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Gestionar</button>
-        </div>
-        <div id="fondo-monitor"><div class="loading"><div class="spin"></div></div></div>
-      </div>
+      <!-- Fondo acumulado — ya no se muestra como tarjeta, se gestiona automáticamente -->
+      <!-- <div class="card" id="fondo-card"> ... gestionado automáticamente al cambiar de mes ... </div> -->
 
       <!-- Status per person -->
       <div class="card">
@@ -627,37 +621,88 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <div class="sec-title" style="padding:0">Gastos</div>
       </div>
 
-      <!-- FIXED -->
-      <div style="display:flex;align-items:center;gap:8px;padding:14px 18px 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);">
-        <span>Fijos del mes</span>
-        <div style="flex:1;height:1px;background:var(--border);"></div>
-        <button onclick="addFixedItem()" style="background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">+ Fijo</button>
+      <!-- Tab selector: Común / PersonA / PersonB -->
+      <div id="gastos-tabs" style="display:flex;gap:0;margin:4px 14px 14px;background:var(--bg-soft);border-radius:22px;padding:4px;">
+        <button id="gtab-common" onclick="setGastoTab('common')"
+          style="flex:1;padding:9px 6px;border:none;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.18s;background:var(--primary);color:white;box-shadow:var(--shadow-1);">
+          🤝 Común
+        </button>
+        <button id="gtab-a" onclick="setGastoTab('a')"
+          style="flex:1;padding:9px 6px;border:none;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.18s;background:transparent;color:var(--text-2);">
+          <span id="gtab-a-label">Persona A</span>
+        </button>
+        <button id="gtab-b" onclick="setGastoTab('b')"
+          style="flex:1;padding:9px 6px;border:none;border-radius:18px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.18s;background:transparent;color:var(--text-2);">
+          <span id="gtab-b-label">Persona B</span>
+        </button>
       </div>
-      <div id="fix-list" style="padding:0 14px 8px;"><div class="loading"><div class="spin"></div></div></div>
 
-      <!-- VARIABLES -->
-      <div style="display:flex;align-items:center;gap:8px;padding:14px 18px 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);margin-top:14px;">
-        <span>Variables del mes</span>
-        <div style="flex:1;height:1px;background:var(--border);"></div>
-        <button onclick="openAdd('expense')" style="background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">+ Gasto</button>
-      </div>
-      <div class="exp-list" id="exp-list"><div class="loading"><div class="spin"></div></div></div>
+      <!-- COMMON VIEW -->
+      <div id="gastos-view-common">
+        <!-- FIXED -->
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 18px 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);">
+          <span>Fijos del mes</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <button onclick="addFixedItem()" style="background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">+ Fijo</button>
+        </div>
+        <div id="fix-list" style="padding:0 14px 8px;"><div class="loading"><div class="spin"></div></div></div>
 
-      <!-- Totales -->
-      <div id="gastos-totales" style="display:none;margin:8px 14px 16px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <div style="background:white;border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow-1);text-align:center;">
-            <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Fijos</div>
-            <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;color:var(--primary);" id="total-fijos">0€</div>
+        <!-- VARIABLES -->
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 18px 6px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-3);margin-top:14px;">
+          <span>Variables del mes</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <button onclick="openAdd('expense')" style="background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">+ Gasto</button>
+        </div>
+        <div class="exp-list" id="exp-list"><div class="loading"><div class="spin"></div></div></div>
+
+        <!-- Totales -->
+        <div id="gastos-totales" style="display:none;margin:8px 14px 16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div style="background:white;border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow-1);text-align:center;">
+              <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Fijos</div>
+              <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;color:var(--primary);" id="total-fijos">0€</div>
+            </div>
+            <div style="background:white;border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow-1);text-align:center;">
+              <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Variables</div>
+              <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;color:var(--coral);" id="total-variables">0€</div>
+            </div>
           </div>
-          <div style="background:white;border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow-1);text-align:center;">
-            <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Variables</div>
-            <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;color:var(--coral);" id="total-variables">0€</div>
+          <div style="background:var(--primary);border-radius:var(--r-sm);padding:14px;text-align:center;box-shadow:var(--shadow-2);">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:4px;">Total del mes</div>
+            <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:300;color:white;" id="total-mes-gastos">0€</div>
           </div>
         </div>
-        <div style="background:var(--primary);border-radius:var(--r-sm);padding:14px;text-align:center;box-shadow:var(--shadow-2);">
-          <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:4px;">Total del mes</div>
-          <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:300;color:white;" id="total-mes-gastos">0€</div>
+      </div>
+
+      <!-- PERSONAL VIEW A -->
+      <div id="gastos-view-a" class="hidden">
+        <div style="margin:0 14px 14px;padding:14px;border-radius:var(--r-sm);background:var(--a-soft);border-left:3px solid var(--a);">
+          <div style="font-size:11px;font-weight:600;color:var(--a);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;" id="pview-a-title">Gastos personales</div>
+          <div style="font-size:12px;color:var(--text-2);">Solo los gastos individuales de esta persona</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;padding:0 14px 8px;">
+          <button onclick="openAddPersonal('a')" style="background:var(--a);color:white;border:none;border-radius:var(--r-sm);padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;">+ Gasto personal</button>
+        </div>
+        <div class="exp-list" id="personal-list-a"><div class="loading"><div class="spin"></div></div></div>
+        <div id="personal-total-a" style="display:none;margin:4px 14px 16px;background:var(--a-soft);border-radius:var(--r-sm);padding:12px;text-align:center;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--a);margin-bottom:4px;">Total personal</div>
+          <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(--a);" id="personal-total-a-val">0€</div>
+        </div>
+      </div>
+
+      <!-- PERSONAL VIEW B -->
+      <div id="gastos-view-b" class="hidden">
+        <div style="margin:0 14px 14px;padding:14px;border-radius:var(--r-sm);background:var(--b-soft);border-left:3px solid var(--b);">
+          <div style="font-size:11px;font-weight:600;color:var(--b);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;" id="pview-b-title">Gastos personales</div>
+          <div style="font-size:12px;color:var(--text-2);">Solo los gastos individuales de esta persona</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;padding:0 14px 8px;">
+          <button onclick="openAddPersonal('b')" style="background:var(--b);color:white;border:none;border-radius:var(--r-sm);padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;">+ Gasto personal</button>
+        </div>
+        <div class="exp-list" id="personal-list-b"><div class="loading"><div class="spin"></div></div></div>
+        <div id="personal-total-b" style="display:none;margin:4px 14px 16px;background:var(--b-soft);border-radius:var(--r-sm);padding:12px;text-align:center;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--b);margin-bottom:4px;">Total personal</div>
+          <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(--b);" id="personal-total-b-val">0€</div>
         </div>
       </div>
     </div>
@@ -779,7 +824,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         </div>
       </div>
 
-      <div style="text-align:center;padding:24px;color:var(--text-3);font-size:12px">Manejo de Gastos · v2</div>
+      <div style="text-align:center;padding:24px;color:var(--text-3);font-size:12px">Manejo de Gastos · v3.4</div>
     </div>
   </div>
 
@@ -901,11 +946,11 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         </div>
 
         <button class="btn" id="exp-save-btn" onclick="saveExpense()">Guardar gasto</button>
+        <button class="btn ghost" style="margin-top:8px;color:var(--text-3);" onclick="closeM('add-modal')">Cancelar</button>
       </div>
 
       <!-- CONTRIBUTION form -->
       <div id="form-contribution" class="hidden">
-        <p style="font-size:14px;color:var(--text-2);margin-bottom:16px">Registra cuánto aportas. Puedes dividir entre la cuenta común y la otra persona.</p>
         <div class="fg">
           <label>¿Quién aporta?</label>
           <div class="two-grid">
@@ -986,6 +1031,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
           <input type="date" id="con-date">
         </div>
         <button class="btn" id="con-save-btn" onclick="saveContrib()">Registrar aporte</button>
+        <button class="btn ghost" style="margin-top:8px;color:var(--text-3);" onclick="closeM('add-modal')">Cancelar</button>
       </div>
 
     </div>
@@ -1078,6 +1124,7 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <input type="text" id="fondo-note" placeholder="Ej: Sobrante de mayo">
       </div>
       <button class="btn" onclick="saveFondoOp()">Guardar</button>
+      <button class="btn ghost" style="margin-top:8px;color:var(--text-3);" onclick="closeM('fondo-modal')">Cancelar</button>
 
       <!-- Historial -->
       <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
@@ -1151,12 +1198,27 @@ const CATEGORIES = [
   {k:'salud',i:'💊',l:'Salud'},
   {k:'ocio',i:'🎬',l:'Ocio'},
   {k:'servicios',i:'💡',l:'Facturas'},
+  {k:'energia',i:'⚡',l:'Energía'},
+  {k:'gas',i:'🔥',l:'Gas'},
+  {k:'internet',i:'📡',l:'Internet'},
   {k:'viaje',i:'✈️',l:'Viaje'},
   {k:'ropa',i:'👕',l:'Ropa'},
   {k:'belleza',i:'💄',l:'Belleza'},
   {k:'regalo',i:'🎁',l:'Regalo'},
   {k:'otro',i:'📦',l:'Otro'},
 ];
+
+// Smart icon resolver — handles legacy 'servicios' items by description
+function getCatIcon(item) {
+  if (item.category === 'servicios') {
+    const desc = (item.description || item.name || '').toLowerCase();
+    if (desc.includes('energ')) return '⚡';
+    if (desc.includes('gas')) return '🔥';
+    if (desc.includes('internet') || desc.includes('wifi') || desc.includes('fibra')) return '📡';
+  }
+  const cat = CATEGORIES.find(x => x.k === item.category);
+  return cat ? cat.i : '📦';
+}
 
 // =================== INIT ===================
 function start() {
@@ -1192,6 +1254,11 @@ function start() {
 }
 
 async function bootstrap() {
+  // Show loading state while connecting
+  const loadingTimeout = setTimeout(() => {
+    showConnErr('La conexión con Supabase está tardando más de lo esperado. Comprueba tu conexión a internet y pulsa Reintentar.');
+  }, 10000);
+
   // Auto-setup: settings always exist with hardcoded names
   try {
     const { data, error } = await S.sb.from('settings').select('*').limit(1).maybeSingle();
@@ -1213,8 +1280,10 @@ async function bootstrap() {
 
     // No "who am I" selection — both users share the app
     S.myRole = 'shared';
+    clearTimeout(loadingTimeout);
     showApp();
   } catch(e) {
+    clearTimeout(loadingTimeout);
     console.error(e);
     showConnErr(e.message || 'Error de conexión con Supabase. Revisa tu URL/KEY y que la tabla settings exista.');
   }
@@ -1275,6 +1344,13 @@ async function showApp() {
 
   updateNamesEverywhere();
 
+  // Init pull-to-refresh and modal drag-to-close (only once)
+  if (!S._uiInited) {
+    S._uiInited = true;
+    initPullToRefresh();
+    initModalDragClose();
+  }
+
   // Subscribe to settings changes
   if (S.channels.length === 0) {
     const ch = S.sb.channel('settings-ch')
@@ -1322,9 +1398,9 @@ async function loadMonth() {
         const DEFAULTS = [
           { name:'Alquiler', category:'hogar', amount:800, paid_by:'b', sort_order:1 },
           { name:'Comida',   category:'super', amount:300, paid_by:'common', sort_order:2 },
-          { name:'Energía',  category:'servicios', amount:0, paid_by:'common', sort_order:3 },
-          { name:'Gas',      category:'servicios', amount:0, paid_by:'common', sort_order:4 },
-          { name:'Internet', category:'servicios', amount:0, paid_by:'common', sort_order:5 },
+          { name:'Energía',  category:'energia', amount:0, paid_by:'common', sort_order:3 },
+          { name:'Gas',      category:'gas', amount:0, paid_by:'common', sort_order:4 },
+          { name:'Internet', category:'internet', amount:0, paid_by:'common', sort_order:5 },
         ];
         const ins = await S.sb.from('fixed_template').insert(DEFAULTS);
         if (ins.error) throw ins.error;
@@ -1405,11 +1481,15 @@ window.prevMonth = async function() {
   render();
 };
 window.nextMonth = async function() {
+  const prevMonth = S.month;
   const [y,m] = S.month.split('-').map(Number);
   const d = new Date(y, m, 1);
   S.month = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
   updateMonthLabel();
   await loadMonth();
+  // Auto-transfer surplus from previous month
+  await autoTransferPrevMonthSurplus(prevMonth);
+  await loadMonth(); // reload to pick up new contributions
   subscribeMonth();
   render();
 };
@@ -1450,6 +1530,11 @@ function updateNamesEverywhere() {
   setText('pb-name-b', nB);
   setText('cwho-a', nA);
   setText('cwho-b', nB);
+  // Gastos tab labels
+  setText('gtab-a-label', nA);
+  setText('gtab-b-label', nB);
+  setText('pview-a-title', `${nA} · Personal`);
+  setText('pview-b-title', `${nB} · Personal`);
 }
 
 // =================== CALCULATIONS ===================
@@ -1572,6 +1657,7 @@ function render() {
   renderFondo();
   renderResumenGeneral(c);
   renderExpList();
+  renderPersonalLists();
   renderMes(c);
 }
 
@@ -1682,7 +1768,7 @@ function renderExpList() {
         const who = it.paid_by === 'common' ? 'común' : nameOf(it.paid_by);
         const whoColor = it.paid_by === 'common' ? 'var(--accent)' : (it.paid_by === 'a' ? 'var(--a)' : 'var(--b)');
         return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:var(--r-sm);margin-bottom:6px;box-shadow:var(--shadow-1);">
-          <div style="font-size:18px;width:26px;text-align:center;flex-shrink:0;">${cat.i}</div>
+          <div style="font-size:18px;width:26px;text-align:center;flex-shrink:0;">${getCatIcon(it)}</div>
           <div style="flex:1;min-width:0;cursor:pointer;" onclick="showExpDetail('${it.id}')">
             <div style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(it.description||cat.l)}</div>
             <div style="font-size:11px;color:${whoColor};margin-top:1px;">${who}</div>
@@ -1723,7 +1809,7 @@ function renderExpList() {
         return `<div class="swipe-wrap">
           <div class="swipe-del-bg">🗑️</div>
           <div class="swipe-item exp" style="margin-bottom:0;border-radius:var(--r-sm);" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp">
-            <div class="exp-cat">${cat.i}</div>
+            <div class="exp-cat">${getCatIcon(it)}</div>
             <div class="exp-info">
               <div class="exp-desc">${escapeHtml(it.description || cat.l)}</div>
               <div class="exp-meta">
@@ -2158,8 +2244,6 @@ window.saveContrib = async function() {
     closeM('add-modal');
     await loadMonth();
     render();
-    // Check if overpaid → suggest fondo
-    if (!S.editingId) setTimeout(() => checkFondoSuggestion(S.cWho, 0), 400);
   } catch(e) { toast('Error: '+e.message); console.error(e); }
 };
 
@@ -2664,8 +2748,8 @@ function renderResumenGeneral(c) {
     row('📊 Total gastos del mes', eur(totalFijos + totalVars), 'var(--primary)') +
     row('📦 Gastos fijos', eur(totalFijos), 'var(--text-2)') +
     row('🛒 Gastos variables', eur(totalVars), 'var(--text-2)') +
-    row(`💙 Aportado por ${nA}`, eur(c.outA), 'var(--a)', `Obligación: ${eur(c.oblA)}`) +
-    row(`💜 Aportado por ${nB}`, eur(c.outB), 'var(--b)', `Obligación: ${eur(c.oblB)}`) +
+    row(`🟢 Aportado por ${nA}`, eur(c.outA), 'var(--a)', `Obligación: ${eur(c.oblA)}`) +
+    row(`🟡 Aportado por ${nB}`, eur(c.outB), 'var(--b)', `Obligación: ${eur(c.oblB)}`) +
     row('🏦 Cuenta común', commonLabel, commonColor) +
     (fondoSaldo > 0.5 ? row('💰 Fondo acumulado', eur(fondoSaldo), 'var(--ok)') : '') +
     (c.isSettled
@@ -2693,21 +2777,28 @@ function initSwipeDelete(container) {
       if (dy > Math.abs(dx) * 1.5) return; // vertical scroll, ignore
       swiping = true;
       if (dx < 0) {
-        item.style.transform = `translateX(${Math.max(dx, -80)}px)`;
+        const pull = Math.max(dx, -120);
+        item.style.transform = `translateX(${pull}px)`;
         item.style.transition = 'none';
+        // Show danger color on bg when past threshold
+        const bg = item.parentElement?.querySelector('.swipe-del-bg');
+        if (bg) bg.style.background = dx < -80 ? 'var(--danger)' : 'rgba(184,48,48,0.6)';
       }
     }, {passive:true});
 
     item.addEventListener('touchend', async () => {
       item.style.transition = '';
-      if (dx < -50) {
+      if (dx < -100) {
         // Confirmed delete
         item.classList.add('swiped');
         const id = item.dataset.id;
         const kind = item.dataset.kind;
         await swipeDelete(id, kind, item);
       } else {
+        // Spring back
         item.style.transform = '';
+        const bg = item.parentElement?.querySelector('.swipe-del-bg');
+        if (bg) bg.style.background = '';
       }
     });
   });
@@ -2921,24 +3012,71 @@ function updateDebtHint(who) {
   }
 }
 
-async function checkFondoSuggestion(who, amtPaid) {
-  // After saving a contribution, check if person overpaid and suggest fondo
-  const c = calc();
-  const out = who === 'a' ? c.outA : c.outB;
-  const obl = who === 'a' ? c.oblA : c.oblB;
-  const excess = out - obl;
-  if (excess > 0.5 && c.isSettled) {
-    if (confirm(`Has aportado ${eur(excess)} más de lo necesario. ¿Añadirlo al fondo acumulado?`)) {
-      const today = new Date().toISOString().split('T')[0];
-      await S.sb.from('common_fund').insert({
-        type: 'add', amount: +excess.toFixed(2),
-        note: `Sobrante de ${nameOf(who)} — ${S.month}`,
-        date: today, month: S.month
-      });
-      await loadMonth();
-      render();
-      toast('✓ Añadido al fondo');
+// =================== FONDO AUTO-TRANSFER ===================
+// When navigating to a new month, auto-transfer previous month's surplus to fondo
+async function autoTransferPrevMonthSurplus(prevMonth) {
+  try {
+    // Load previous month data
+    const [expRes, conRes, cfgRes] = await Promise.all([
+      S.sb.from('expenses').select('*').eq('month', prevMonth),
+      S.sb.from('contributions').select('*').eq('month', prevMonth),
+      S.sb.from('monthly_configs').select('*').eq('month', prevMonth).maybeSingle()
+    ]);
+    if (expRes.error || conRes.error) return;
+
+    const prevExpenses = expRes.data || [];
+    const prevContribs = conRes.data || [];
+    const prevCfg = cfgRes.data || {};
+
+    // Check if we already created a "Mes anterior" entry for this transition
+    const alreadyDone = await S.sb.from('common_fund')
+      .select('id').eq('month', S.month).eq('type', 'add').like('note', `%${prevMonth}%`).maybeSingle();
+    if (alreadyDone.data) return; // Already processed
+
+    // Calculate common balance of previous month
+    const paidCommon = prevExpenses.filter(e => e.paid_by === 'common').reduce((s,e) => s + (+e.amount||0), 0);
+    const contributed = prevContribs.filter(c => c.dest !== 'person').reduce((s,c) => s + (+c.amount||0), 0);
+    const surplus = contributed - paidCommon;
+
+    if (surplus < 0.5) return; // No surplus worth carrying over
+
+    // Calculate ratios
+    const dist = prevCfg.distribution_method || 'proportional';
+    const incA = +prevCfg.income_a || 0;
+    const incB = +prevCfg.income_b || 0;
+    let rA = 0.5, rB = 0.5;
+    if (dist === 'proportional' && incA + incB > 0) {
+      rA = incA / (incA + incB);
+      rB = incB / (incA + incB);
     }
+
+    const today = new Date().toISOString().split('T')[0];
+    const note = `Sobrante de ${prevMonth}`;
+
+    // 1. Add to fondo
+    await S.sb.from('common_fund').insert({
+      type: 'add', amount: +surplus.toFixed(2), note, date: today, month: S.month
+    });
+
+    // 2. Create proportional "Mes anterior" contributions
+    const credA = +(surplus * rA).toFixed(2);
+    const credB = +(surplus - credA).toFixed(2);
+    if (credA > 0) {
+      await S.sb.from('contributions').insert({
+        month: S.month, amount: credA, person: 'a', date: today,
+        note: `Mes anterior (sobrante ${note})`, dest: 'common'
+      });
+    }
+    if (credB > 0) {
+      await S.sb.from('contributions').insert({
+        month: S.month, amount: credB, person: 'b', date: today,
+        note: `Mes anterior (sobrante ${note})`, dest: 'common'
+      });
+    }
+
+    toast(`✓ Sobrante de ${eur(surplus)} transferido del mes anterior`);
+  } catch(e) {
+    console.warn('autoTransfer error:', e);
   }
 }
 function eur(n) {
@@ -2957,6 +3095,189 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// =================== GASTOS TABS ===================
+S.gastoTab = 'common'; // 'common' | 'a' | 'b'
+
+window.setGastoTab = function(tab) {
+  S.gastoTab = tab;
+  const tabs = ['common','a','b'];
+  const pA = nameOf('a'), pB = nameOf('b');
+
+  tabs.forEach(t => {
+    const btn = document.getElementById('gtab-' + t);
+    if (!btn) return;
+    const isActive = t === tab;
+    if (isActive) {
+      let bg = 'var(--primary)';
+      if (t === 'a') bg = 'var(--a)';
+      if (t === 'b') bg = 'var(--b)';
+      btn.style.background = bg;
+      btn.style.color = 'white';
+      btn.style.boxShadow = 'var(--shadow-1)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text-2)';
+      btn.style.boxShadow = 'none';
+    }
+    const view = document.getElementById('gastos-view-' + t);
+    if (view) view.classList.toggle('hidden', !isActive);
+  });
+
+  // Update FAB behavior
+  if (tab === 'a') {
+    document.getElementById('fab').onclick = () => openAddPersonal('a');
+  } else if (tab === 'b') {
+    document.getElementById('fab').onclick = () => openAddPersonal('b');
+  } else {
+    document.getElementById('fab').onclick = () => openAdd('expense');
+  }
+
+  renderPersonalLists();
+};
+
+function renderPersonalLists() {
+  ['a','b'].forEach(p => {
+    const items = S.expenses.filter(e => e.type === 'personal' && e.paid_by === p && !e.is_fixed)
+      .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    const listEl = document.getElementById('personal-list-' + p);
+    const totalEl = document.getElementById('personal-total-' + p);
+    const totalValEl = document.getElementById('personal-total-' + p + '-val');
+    if (!listEl) return;
+
+    if (!items.length) {
+      listEl.innerHTML = `<div class="empty" style="padding:30px 20px;"><div class="empty-i">📭</div><p>Sin gastos personales<br>este mes</p></div>`;
+      if (totalEl) totalEl.style.display = 'none';
+      return;
+    }
+
+    listEl.innerHTML = items.map(it => {
+      return `<div class="swipe-wrap">
+        <div class="swipe-del-bg">🗑️</div>
+        <div class="swipe-item exp" style="margin-bottom:0;border-radius:var(--r-sm);" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp">
+          <div class="exp-cat">${getCatIcon(it)}</div>
+          <div class="exp-info">
+            <div class="exp-desc">${escapeHtml(it.description || getCatIcon(it))}</div>
+            <div class="exp-meta">
+              <span class="tag personal">Personal</span>
+              <span>${fdate(it.date)}</span>
+            </div>
+          </div>
+          <div class="exp-amt">${eur(it.amount)}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    initSwipeDelete(listEl);
+
+    const total = items.reduce((s,e) => s + (+e.amount||0), 0);
+    if (totalEl) totalEl.style.display = 'block';
+    if (totalValEl) totalValEl.textContent = eur(total);
+  });
+}
+
+window.openAddPersonal = function(person) {
+  openAdd('expense');
+  setTimeout(() => {
+    setExpType('personal');
+    setPaidBy(person);
+  }, 30);
+};
+
+// =================== PULL TO REFRESH ===================
+function initPullToRefresh() {
+  const content = document.querySelector('.content');
+  if (!content) return;
+
+  let startY = 0, pulling = false, triggered = false;
+  const THRESHOLD = 72;
+
+  // Indicator element
+  const indicator = document.createElement('div');
+  indicator.id = 'ptr-indicator';
+  indicator.style.cssText = `
+    position:fixed;top:0;left:0;right:0;z-index:150;
+    display:flex;align-items:center;justify-content:center;
+    height:0;overflow:hidden;transition:height 0.2s;
+    background:var(--primary-soft);color:var(--primary);
+    font-size:13px;font-weight:600;gap:8px;
+  `;
+  indicator.innerHTML = `<div class="spin" style="border-top-color:var(--primary);"></div><span id="ptr-txt">Suelta para actualizar</span>`;
+  document.body.appendChild(indicator);
+
+  content.addEventListener('touchstart', e => {
+    if (content.scrollTop === 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+      triggered = false;
+    }
+  }, {passive:true});
+
+  content.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 10 && content.scrollTop === 0) {
+      const h = Math.min(dy * 0.5, THRESHOLD);
+      indicator.style.height = h + 'px';
+      triggered = dy > THRESHOLD * 1.4;
+      document.getElementById('ptr-txt').textContent = triggered ? '↑ Suelta para actualizar' : '↓ Tirando para actualizar...';
+    }
+  }, {passive:true});
+
+  content.addEventListener('touchend', async () => {
+    if (!pulling) return;
+    pulling = false;
+    if (triggered) {
+      indicator.style.height = '44px';
+      document.getElementById('ptr-txt').textContent = 'Actualizando...';
+      await loadMonth();
+      render();
+      toast('✓ Datos actualizados');
+    }
+    setTimeout(() => { indicator.style.height = '0'; }, 300);
+  });
+}
+
+// =================== MODAL DRAG TO CLOSE ===================
+function initModalDragClose() {
+  document.querySelectorAll('.mov').forEach(modal => {
+    const sheet = modal.querySelector('.msh');
+    const handle = modal.querySelector('.mh');
+    if (!sheet || !handle) return;
+
+    let startY = 0, dy = 0, dragging = false;
+    const modalId = modal.id;
+
+    // Larger hit area — the handle zone (first 60px of sheet)
+    handle.style.padding = '16px 40px';
+    handle.style.margin = '0 auto';
+    handle.style.cursor = 'grab';
+
+    handle.addEventListener('touchstart', e => {
+      startY = e.touches[0].clientY;
+      dy = 0; dragging = true;
+      sheet.style.transition = 'none';
+    }, {passive:true});
+
+    handle.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      dy = e.touches[0].clientY - startY;
+      if (dy > 0) sheet.style.transform = `translateY(${dy}px)`;
+    }, {passive:true});
+
+    handle.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      sheet.style.transition = '';
+      if (dy > 80) {
+        closeM(modalId);
+        setTimeout(() => { sheet.style.transform = ''; }, 300);
+      } else {
+        sheet.style.transform = '';
+      }
+    });
+  });
 }
 
 // =================== START ===================
