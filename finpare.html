@@ -5,8 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ManejoGastos">
 <meta name="theme-color" content="#1A3A30">
-<title>FinPare — Finanzas en pareja</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect fill='%231A3A30' width='180' height='180' rx='40'/%3E%3Ctext x='50%25' y='54%25' font-size='90' text-anchor='middle' dominant-baseline='middle'%3E🌿%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Manejo+de+Gastos%22%2C%22short_name%22%3A%22ManejoGastos%22%2C%22start_url%22%3A%22.%2Ffinpare.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F0%22%2C%22theme_color%22%3A%22%231A3A30%22%7D">
+<title>Manejo de Gastos — Finanzas en pareja</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -377,8 +380,10 @@ button{font-family:inherit;}
 .mov{
   position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;
   display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.22s;
+  overflow:hidden;
 }
 .mov.open{opacity:1;pointer-events:all;}
+body.modal-open{overflow:hidden;position:fixed;width:100%;}
 .msh{
   background:white;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;
   transform:translateY(100%);transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
@@ -453,8 +458,8 @@ button{font-family:inherit;}
 <!-- ===== SETUP ===== -->
 <div id="setup" class="hidden">
   <div class="setup-brand">
-    <div class="brand">Fin<em>Pare</em></div>
-    <div class="brand-sub">Las finanzas de los dos, sin Excel</div>
+    <div class="brand">Manejo<em>Gastos</em></div>
+    <div class="brand-sub">Gestión compartida de gastos</div>
   </div>
 
   <div class="setup-card" id="setup-conn-err-wrap" style="display:none">
@@ -501,7 +506,7 @@ button{font-family:inherit;}
   <!-- Top bar -->
   <div class="topbar">
     <div class="topbar-row">
-      <div class="tb-logo">Fin<em>Pare</em> 🌿</div>
+      <div class="tb-logo">Manejo<em>Gastos</em> 🌿</div>
       <button class="tb-who" onclick="nav('ajustes',document.getElementById('nb-ajustes'))" style="background:rgba(255,255,255,0.12);border:none;color:white;padding:6px 12px;border-radius:20px;font-size:14px;cursor:pointer;">⚙️</button>
     </div>
     <div class="month-bar">
@@ -530,7 +535,7 @@ button{font-family:inherit;}
               <input type="number" inputmode="decimal" step="0.01" min="0" id="income-a-input"
                 placeholder="0"
                 style="width:100%;border:none;background:transparent;outline:none;font-family:'Fraunces',serif;font-size:30px;font-weight:300;text-align:center;color:var(--text);padding:0;appearance:none;-moz-appearance:textfield;"
-                onfocus="this.select()" onblur="saveIncome('a',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                onfocus="this.select()" oninput="this.value=this.value.replace(/,/g,'.')" onblur="saveIncome('a',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
               <div style="font-size:14px;color:var(--text-3);margin-top:2px;">€</div>
               <div id="ic-status-a" style="font-size:11px;color:var(--text-2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft,#F0EBDF);min-height:14px;"></div>
             </div>
@@ -539,7 +544,7 @@ button{font-family:inherit;}
               <input type="number" inputmode="decimal" step="0.01" min="0" id="income-b-input"
                 placeholder="0"
                 style="width:100%;border:none;background:transparent;outline:none;font-family:'Fraunces',serif;font-size:30px;font-weight:300;text-align:center;color:var(--text);padding:0;appearance:none;-moz-appearance:textfield;"
-                onfocus="this.select()" onblur="saveIncome('b',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+                onfocus="this.select()" oninput="this.value=this.value.replace(/,/g,'.')" onblur="saveIncome('b',this.value)" onkeydown="if(event.key==='Enter')this.blur()">
               <div style="font-size:14px;color:var(--text-3);margin-top:2px;">€</div>
               <div id="ic-status-b" style="font-size:11px;color:var(--text-2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft,#F0EBDF);min-height:14px;"></div>
             </div>
@@ -561,8 +566,17 @@ button{font-family:inherit;}
 
       <!-- Common account monitor -->
       <div class="card">
-        <div class="card-t">Cuenta común</div>
+        <div class="card-t">Cuenta común · este mes</div>
         <div class="cm-card" id="common-monitor"><div class="loading"><div class="spin"></div></div></div>
+      </div>
+
+      <!-- Fondo acumulado -->
+      <div class="card" id="fondo-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div class="card-t" style="margin-bottom:0">Fondo acumulado</div>
+          <button onclick="openFondoModal()" style="background:var(--primary-soft);color:var(--primary);border:none;border-radius:var(--r-xs);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Gestionar</button>
+        </div>
+        <div id="fondo-monitor"><div class="loading"><div class="spin"></div></div></div>
       </div>
 
       <!-- Status per person -->
@@ -599,6 +613,24 @@ button{font-family:inherit;}
         <button onclick="openAdd('expense')" style="background:var(--coral);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:11px;font-weight:600;cursor:pointer;">+ Gasto</button>
       </div>
       <div class="exp-list" id="exp-list"><div class="loading"><div class="spin"></div></div></div>
+
+      <!-- Totales -->
+      <div id="gastos-totales" style="display:none;margin:8px 14px 16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div style="background:white;border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow-1);text-align:center;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Fijos</div>
+            <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;color:var(--primary);" id="total-fijos">0€</div>
+          </div>
+          <div style="background:white;border-radius:var(--r-sm);padding:12px;box-shadow:var(--shadow-1);text-align:center;">
+            <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px;">Variables</div>
+            <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:400;color:var(--coral);" id="total-variables">0€</div>
+          </div>
+        </div>
+        <div style="background:var(--primary);border-radius:var(--r-sm);padding:14px;text-align:center;box-shadow:var(--shadow-2);">
+          <div style="font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:4px;">Total del mes</div>
+          <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:300;color:white;" id="total-mes-gastos">0€</div>
+        </div>
+      </div>
     </div>
 
     <!-- ===== APORTES (separado) ===== -->
@@ -718,7 +750,7 @@ button{font-family:inherit;}
         </div>
       </div>
 
-      <div style="text-align:center;padding:24px;color:var(--text-3);font-size:12px">FinPare · v2</div>
+      <div style="text-align:center;padding:24px;color:var(--text-3);font-size:12px">Manejo de Gastos · v2</div>
     </div>
   </div>
 
@@ -790,7 +822,7 @@ button{font-family:inherit;}
 
         <div class="fg">
           <label>Importe (€)</label>
-          <input type="number" id="exp-amt" step="0.01" min="0" placeholder="0.00" style="font-size:24px;font-weight:700;text-align:center;">
+          <input type="number" id="exp-amt" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.')" style="font-size:24px;font-weight:700;text-align:center;">
         </div>
 
         <div class="fg">
@@ -844,7 +876,7 @@ button{font-family:inherit;}
 
       <!-- CONTRIBUTION form -->
       <div id="form-contribution" class="hidden">
-        <p style="font-size:14px;color:var(--text-2);margin-bottom:16px">Cuánto aportas tú (o tu pareja) a la cuenta común este mes.</p>
+        <p style="font-size:14px;color:var(--text-2);margin-bottom:16px">Registra cuánto aportas. Puedes dividir entre la cuenta común y la otra persona.</p>
         <div class="fg">
           <label>¿Quién aporta?</label>
           <div class="two-grid">
@@ -858,10 +890,58 @@ button{font-family:inherit;}
             </div>
           </div>
         </div>
+
+        <!-- Destino del aporte -->
         <div class="fg">
-          <label>Importe (€)</label>
-          <input type="number" id="con-amt" step="0.01" min="0" placeholder="0.00" style="font-size:24px;font-weight:700;text-align:center;">
+          <label>¿A quién va el dinero?</label>
+          <div class="radio-group" id="con-dest-group">
+            <div class="radio-opt active" data-cdest="common" onclick="setConDest('common')">
+              <div class="radio-circle"></div>
+              <div class="radio-info">
+                <div class="radio-title">🏦 Solo a cuenta común</div>
+                <div class="radio-desc">El total va a la cuenta compartida</div>
+              </div>
+            </div>
+            <div class="radio-opt" data-cdest="person" onclick="setConDest('person')">
+              <div class="radio-circle"></div>
+              <div class="radio-info">
+                <div class="radio-title" id="con-dest-person-label">👤 Solo a la otra persona</div>
+                <div class="radio-desc">Transferencia directa entre vosotros</div>
+              </div>
+            </div>
+            <div class="radio-opt" data-cdest="split" onclick="setConDest('split')">
+              <div class="radio-circle"></div>
+              <div class="radio-info">
+                <div class="radio-title">✂️ Dividir entre los dos</div>
+                <div class="radio-desc">Parte a la otra persona, parte a cuenta común</div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Importe único (common o person) -->
+        <div id="con-simple-amt" class="fg">
+          <label>Importe total (€)</label>
+          <input type="number" id="con-amt" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.');updateConSplit()" style="font-size:24px;font-weight:700;text-align:center;">
+        </div>
+
+        <!-- Importes split -->
+        <div id="con-split-amts" class="hidden">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div class="fg" style="margin-bottom:0">
+              <label id="con-split-person-label" style="color:var(--b)">A la otra persona (€)</label>
+              <input type="number" id="con-amt-person" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.');updateConTotal()" style="font-size:20px;font-weight:700;text-align:center;">
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <label style="color:var(--common)">A cuenta común (€)</label>
+              <input type="number" id="con-amt-common" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.');updateConTotal()" style="font-size:20px;font-weight:700;text-align:center;">
+            </div>
+          </div>
+          <div style="text-align:center;padding:10px;background:var(--bg-soft);border-radius:var(--r-xs);font-size:13px;color:var(--text-2);">
+            Total: <strong id="con-split-total" style="font-family:'Fraunces',serif;font-size:18px;color:var(--primary);">0€</strong>
+          </div>
+        </div>
+
         <div class="fg">
           <label>Nota (opcional)</label>
           <input type="text" id="con-note" placeholder="Ej: Transferencia mensual">
@@ -909,6 +989,70 @@ button{font-family:inherit;}
   </div>
 </div>
 
+<!-- Fondo acumulado modal -->
+<div class="mov" id="fondo-modal" onclick="ovClick(event,'fondo-modal')">
+  <div class="msh">
+    <div class="mh"></div>
+    <div class="mhdr">
+      <div class="mttl">Fondo acumulado</div>
+      <button class="mx" onclick="closeM('fondo-modal')">✕</button>
+    </div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--text-2);margin-bottom:18px;">El dinero que sobra cada mes en la cuenta común se acumula aquí. Puedes usarlo para reducir aportaciones o gastarlo cuando queráis.</p>
+
+      <!-- Saldo actual -->
+      <div style="background:var(--primary-soft);border-radius:var(--r-sm);padding:18px;text-align:center;margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-2);margin-bottom:6px;">Saldo del fondo</div>
+        <div style="font-family:'Fraunces',serif;font-size:42px;font-weight:300;color:var(--primary);" id="fondo-saldo-modal">—</div>
+      </div>
+
+      <!-- Opciones -->
+      <div class="fg">
+        <label>¿Qué quieres hacer?</label>
+        <div class="radio-group">
+          <div class="radio-opt active" data-fop="add" onclick="setFondoOp('add')">
+            <div class="radio-circle"></div>
+            <div class="radio-info">
+              <div class="radio-title">Añadir al fondo</div>
+              <div class="radio-desc">Ingresa manualmente un sobrante del mes</div>
+            </div>
+          </div>
+          <div class="radio-opt" data-fop="use" onclick="setFondoOp('use')">
+            <div class="radio-circle"></div>
+            <div class="radio-info">
+              <div class="radio-title">Usar del fondo</div>
+              <div class="radio-desc">Descontar un gasto del fondo acumulado</div>
+            </div>
+          </div>
+          <div class="radio-opt" data-fop="apply" onclick="setFondoOp('apply')">
+            <div class="radio-circle"></div>
+            <div class="radio-info">
+              <div class="radio-title">Aplicar al mes actual</div>
+              <div class="radio-desc">Reducir lo que hay que aportar este mes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-top:12px;">
+        <label>Importe (€)</label>
+        <input type="number" id="fondo-amt" step="0.01" min="0" placeholder="0.00" oninput="this.value=this.value.replace(/,/g,'.')" style="font-size:22px;font-weight:700;text-align:center;">
+      </div>
+      <div class="fg">
+        <label>Nota (opcional)</label>
+        <input type="text" id="fondo-note" placeholder="Ej: Sobrante de mayo">
+      </div>
+      <button class="btn" onclick="saveFondoOp()">Guardar</button>
+
+      <!-- Historial -->
+      <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;">Historial</div>
+        <div id="fondo-historial"><div class="loading"><div class="spin"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ===== JS ===== -->
@@ -946,6 +1090,7 @@ const S = {
   expType: null,
   paidBy: null,
   cWho: null,
+  conDest: 'common',   // 'common' | 'person' | 'split'
   expCat: 'super',
   affectsBase: false,
   // NEW: fixed-flow state
@@ -954,7 +1099,10 @@ const S = {
   // Editing mode
   editingId: null,
   editingKind: null,
-  editingTpl: null,        // template id if editing a fixed via name
+  editingTpl: null,
+  // Fondo acumulado
+  fondo: [],           // rows from common_fund table
+  fondoOp: 'add',     // 'add' | 'use' | 'apply'
   // Channels
   channels: [],
   imCtx: null
@@ -1155,6 +1303,13 @@ async function loadMonth() {
 
   // Auto-create fixed expenses for this month if none exist yet
   await ensureFixedExpensesForMonth();
+
+  // Load fondo acumulado (all time)
+  try {
+    const { data, error } = await S.sb.from('common_fund').select('*').order('date',{ascending:false});
+    if (error) throw error;
+    S.fondo = data || [];
+  } catch(e) { console.error('Error fondo:', e); S.fondo = []; }
 }
 
 async function ensureFixedExpensesForMonth() {
@@ -1367,6 +1522,7 @@ function render() {
   renderHero(c);
   renderStatus(c);
   renderCommon(c);
+  renderFondo();
   renderHomeSummary(c);
   renderExpList();
   renderMes(c);
@@ -1457,11 +1613,8 @@ function renderHomeSummary(c) {
   const nA = nameOf('a'), nB = nameOf('b');
   el.innerHTML = `
     <div class="line"><span class="line-l">Total gastos compartidos</span><span class="line-v">${eur(c.totalShared)}</span></div>
-    <div class="line"><span class="line-l">Pagado por ${nA}</span><span class="line-v" style="color:var(--a)">${eur(c.paidPersA)}</span></div>
-    <div class="line"><span class="line-l">Pagado por ${nB}</span><span class="line-v" style="color:var(--b)">${eur(c.paidPersB)}</span></div>
-    <div class="line"><span class="line-l">Pagado desde común</span><span class="line-v">${eur(c.paidCommon)}</span></div>
-    <div class="line"><span class="line-l">Aportes a común — ${nA}</span><span class="line-v" style="color:var(--a)">${eur(c.conA)}</span></div>
-    <div class="line"><span class="line-l">Aportes a común — ${nB}</span><span class="line-v" style="color:var(--b)">${eur(c.conB)}</span></div>
+    <div class="line"><span class="line-l">Obligación de ${nA}</span><span class="line-v" style="color:var(--a)">${eur(c.oblA)}</span></div>
+    <div class="line"><span class="line-l">Obligación de ${nB}</span><span class="line-v" style="color:var(--b)">${eur(c.oblB)}</span></div>
     <div class="line"><span class="line-l">Reparto aplicado</span><span class="line-v">${(c.rA*100).toFixed(0)}% / ${(c.rB*100).toFixed(0)}%</span></div>`;
 }
 
@@ -1534,6 +1687,18 @@ function renderExpList() {
         </div>`;
       }).join('');
     }
+  }
+
+  // Actualizar totales
+  const totalFijos = S.expenses.filter(e => e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
+  const totalVars = S.expenses.filter(e => !e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
+  const totalMes = totalFijos + totalVars;
+  const gtEl = document.getElementById('gastos-totales');
+  if (gtEl) {
+    gtEl.style.display = 'block';
+    document.getElementById('total-fijos').textContent = eur(totalFijos);
+    document.getElementById('total-variables').textContent = eur(totalVars);
+    document.getElementById('total-mes-gastos').textContent = eur(totalMes);
   }
 
   // 3) CONTRIBUTIONS list (separate tab)
@@ -1666,6 +1831,7 @@ window.openAdd = function(type) {
   S.expType = null;
   S.paidBy = null;
   S.cWho = null;
+  S.conDest = 'common';
   S.expCat = 'super';
   S.affectsBase = false;
   S.isFixedFlow = false;
@@ -1675,6 +1841,9 @@ window.openAdd = function(type) {
   document.querySelectorAll('[data-type]').forEach(o => o.classList.remove('active'));
   document.querySelectorAll('[data-who]').forEach(o => o.classList.remove('active'));
   document.querySelectorAll('[data-cwho]').forEach(o => o.classList.remove('active'));
+  document.querySelectorAll('[data-cdest]').forEach(o => o.classList.toggle('active', o.dataset.cdest === 'common'));
+  document.getElementById('con-simple-amt').classList.remove('hidden');
+  document.getElementById('con-split-amts').classList.add('hidden');
   document.getElementById('pb-common').style.display = '';
   document.getElementById('affects-base-wrap').classList.add('hidden');
   document.getElementById('tg-affects').classList.remove('on');
@@ -1708,13 +1877,20 @@ window.setExpType = function(t) {
   }
 };
 
-window.closeM = function(id) { document.getElementById(id).classList.remove('open'); };
+window.closeM = function(id) {
+  document.getElementById(id).classList.remove('open');
+  // Only remove modal-open if no other modals are open
+  if (!document.querySelector('.mov.open')) {
+    document.body.classList.remove('modal-open');
+  }
+};
 window.ovClick = function(e, id) { if (e.target === document.getElementById(id)) closeM(id); };
 
 // Helper to open a modal & scroll its content to top
 function openModal(id) {
   const m = document.getElementById(id);
   m.classList.add('open');
+  document.body.classList.add('modal-open');
   // Reset scroll inside the sheet
   const sheet = m.querySelector('.msh');
   if (sheet) setTimeout(() => { sheet.scrollTop = 0; }, 30);
@@ -1873,20 +2049,41 @@ window.saveExpense = async function() {
 };
 
 window.saveContrib = async function() {
-  const amt = +document.getElementById('con-amt').value;
   const note = document.getElementById('con-note').value.trim();
   const date = document.getElementById('con-date').value;
   if (!S.cWho) { toast('Indica quién aporta'); return; }
-  if (!amt || amt <= 0) { toast('Importe inválido'); return; }
   if (!date) { toast('Falta la fecha'); return; }
-  const data = { amount: amt, person: S.cWho, date, note };
+
   try {
     if (S.editingId && S.editingKind === 'con') {
-      const { error } = await S.sb.from('contributions').update(data).eq('id', S.editingId);
+      // Editing: simple update (no split support in edit mode)
+      const amt = +document.getElementById('con-amt').value;
+      if (!amt || amt <= 0) { toast('Importe inválido'); return; }
+      const { error } = await S.sb.from('contributions').update({ amount: amt, person: S.cWho, date, note }).eq('id', S.editingId);
       if (error) throw error;
       toast('✓ Actualizado');
+    } else if (S.conDest === 'split') {
+      // Split: insert two separate contribution rows
+      const amtPerson = +document.getElementById('con-amt-person').value || 0;
+      const amtCommon = +document.getElementById('con-amt-common').value || 0;
+      if (amtPerson <= 0 && amtCommon <= 0) { toast('Añade al menos un importe'); return; }
+      const inserts = [];
+      if (amtCommon > 0) {
+        inserts.push(S.sb.from('contributions').insert({ month: S.month, amount: amtCommon, person: S.cWho, date, note: note || 'A cuenta común', dest: 'common' }));
+      }
+      if (amtPerson > 0) {
+        const otherPerson = S.cWho === 'a' ? 'b' : 'a';
+        inserts.push(S.sb.from('contributions').insert({ month: S.month, amount: amtPerson, person: S.cWho, date, note: note || `A ${nameOf(otherPerson)}`, dest: 'person' }));
+      }
+      const results = await Promise.all(inserts);
+      for (const r of results) { if (r.error) throw r.error; }
+      toast('✓ Aporte dividido registrado');
     } else {
-      const { error } = await S.sb.from('contributions').insert({ ...data, month: S.month });
+      // Simple: common or person
+      const amt = +document.getElementById('con-amt').value;
+      if (!amt || amt <= 0) { toast('Importe inválido'); return; }
+      const dest = S.conDest || 'common';
+      const { error } = await S.sb.from('contributions').insert({ month: S.month, amount: amt, person: S.cWho, date, note, dest });
       if (error) throw error;
       toast('✓ Aporte registrado');
     }
@@ -2360,6 +2557,151 @@ function downloadCSV(rows, name) {
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 }
+
+// =================== FONDO ACUMULADO ===================
+function calcFondoSaldo() {
+  return S.fondo.reduce((s, r) => {
+    if (r.type === 'add' || r.type === 'apply_in') return s + (+r.amount || 0);
+    if (r.type === 'use' || r.type === 'apply_out') return s - (+r.amount || 0);
+    return s;
+  }, 0);
+}
+
+function renderFondo() {
+  const saldo = calcFondoSaldo();
+  const el = document.getElementById('fondo-monitor');
+  if (!el) return;
+  const cls = saldo < 0 ? 'var(--danger)' : saldo > 0 ? 'var(--ok)' : 'var(--text-3)';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:44px;height:44px;border-radius:22px;background:var(--ok-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">💰</div>
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-3);">Saldo disponible</div>
+        <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:400;color:${cls};margin-top:2px;">${eur(saldo)}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:2px;">${S.fondo.length} movimientos registrados</div>
+      </div>
+    </div>`;
+}
+
+window.openFondoModal = function() {
+  const saldo = calcFondoSaldo();
+  const el = document.getElementById('fondo-saldo-modal');
+  if (el) el.textContent = eur(saldo);
+  document.getElementById('fondo-amt').value = '';
+  document.getElementById('fondo-note').value = '';
+  S.fondoOp = 'add';
+  document.querySelectorAll('[data-fop]').forEach(o => o.classList.toggle('active', o.dataset.fop === 'add'));
+  renderFondoHistorial();
+  openModal('fondo-modal');
+};
+
+window.setFondoOp = function(op) {
+  S.fondoOp = op;
+  document.querySelectorAll('[data-fop]').forEach(o => o.classList.toggle('active', o.dataset.fop === op));
+};
+
+function renderFondoHistorial() {
+  const el = document.getElementById('fondo-historial');
+  if (!el) return;
+  if (!S.fondo.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--text-3);font-size:13px;padding:12px 0;">Sin movimientos aún</div>`;
+    return;
+  }
+  const icons = { add:'➕', use:'💸', apply_out:'📅', apply_in:'📅' };
+  const labels = { add:'Añadido', use:'Usado', apply_out:'Aplicado al mes', apply_in:'Entrada aplicada' };
+  el.innerHTML = S.fondo.slice(0, 10).map(r => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft);">
+      <div style="font-size:18px;">${icons[r.type]||'•'}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;">${escapeHtml(r.note||labels[r.type]||r.type)}</div>
+        <div style="font-size:11px;color:var(--text-3);">${fdate(r.date)}</div>
+      </div>
+      <div style="font-family:'Fraunces',serif;font-size:16px;color:${(r.type==='add'||r.type==='apply_in')?'var(--ok)':'var(--danger)'};">
+        ${(r.type==='add'||r.type==='apply_in')?'+':'-'}${eur(r.amount)}
+      </div>
+      <button onclick="deleteFondoRow('${r.id}')" style="background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px 6px;font-size:14px;">✕</button>
+    </div>`).join('');
+}
+
+window.saveFondoOp = async function() {
+  const amt = +document.getElementById('fondo-amt').value;
+  const note = document.getElementById('fondo-note').value.trim();
+  if (!amt || amt <= 0) { toast('Importe inválido'); return; }
+
+  const saldo = calcFondoSaldo();
+  if ((S.fondoOp === 'use' || S.fondoOp === 'apply') && amt > saldo + 0.01) {
+    toast(`No hay suficiente saldo (${eur(saldo)})`); return;
+  }
+
+  const type = S.fondoOp === 'apply' ? 'apply_out' : S.fondoOp;
+  const today = new Date().toISOString().split('T')[0];
+
+  try {
+    const { error } = await S.sb.from('common_fund').insert({
+      type, amount: amt, note: note || null, date: today, month: S.month
+    });
+    if (error) throw error;
+
+    // If apply: also create a virtual contribution credit for this month
+    if (S.fondoOp === 'apply') {
+      // Split proportionally between a and b based on current ratios
+      const c = calc();
+      const creditA = +(amt * c.rA).toFixed(2);
+      const creditB = +(amt - creditA).toFixed(2);
+      if (creditA > 0) {
+        await S.sb.from('contributions').insert({ month: S.month, amount: creditA, person: 'a', date: today, note: `Fondo aplicado (${eur(amt)})` });
+      }
+      if (creditB > 0) {
+        await S.sb.from('contributions').insert({ month: S.month, amount: creditB, person: 'b', date: today, note: `Fondo aplicado (${eur(amt)})` });
+      }
+    }
+
+    toast('✓ Guardado');
+    closeM('fondo-modal');
+    await loadMonth();
+    render();
+  } catch(e) { toast('Error: '+e.message); console.error(e); }
+};
+
+window.deleteFondoRow = async function(id) {
+  if (!confirm('¿Eliminar este movimiento del fondo?')) return;
+  try {
+    const { error } = await S.sb.from('common_fund').delete().eq('id', id);
+    if (error) throw error;
+    S.fondo = S.fondo.filter(r => r.id !== id);
+    renderFondo();
+    renderFondoHistorial();
+    // Update saldo in modal
+    const el = document.getElementById('fondo-saldo-modal');
+    if (el) el.textContent = eur(calcFondoSaldo());
+    toast('Eliminado');
+  } catch(e) { toast('Error: '+e.message); }
+};
+
+// =================== APORTES MIXTOS ===================
+window.setConDest = function(dest) {
+  S.conDest = dest;
+  document.querySelectorAll('[data-cdest]').forEach(o => o.classList.toggle('active', o.dataset.cdest === dest));
+  const isSplit = dest === 'split';
+  document.getElementById('con-simple-amt').classList.toggle('hidden', isSplit);
+  document.getElementById('con-split-amts').classList.toggle('hidden', !isSplit);
+  // Update label for "person" destination
+  const otherName = nameOf(S.cWho === 'a' ? 'b' : 'a');
+  const lbl = document.getElementById('con-dest-person-label');
+  if (lbl) lbl.textContent = `👤 Solo a ${otherName}`;
+  const splitLbl = document.getElementById('con-split-person-label');
+  if (splitLbl) splitLbl.style.color = S.cWho === 'a' ? 'var(--b)' : 'var(--a)';
+  if (splitLbl) splitLbl.textContent = `A ${otherName} (€)`;
+};
+
+window.updateConTotal = function() {
+  const p = +document.getElementById('con-amt-person').value || 0;
+  const c = +document.getElementById('con-amt-common').value || 0;
+  const el = document.getElementById('con-split-total');
+  if (el) el.textContent = eur(p + c);
+};
+
+window.updateConSplit = function() { /* placeholder for future auto-split */ };
 
 // =================== HELPERS ===================
 function eur(n) {
