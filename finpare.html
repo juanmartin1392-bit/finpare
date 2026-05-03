@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="ManejoGastos">
 <meta name="theme-color" content="#1A3A30">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect fill='%231A3A30' width='180' height='180' rx='40'/%3E%3Ctext x='50%25' y='54%25' font-size='90' text-anchor='middle' dominant-baseline='middle'%3E🌿%3C/text%3E%3C/svg%3E">
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Manejo+de+Gastos%22%2C%22short_name%22%3A%22ManejoGastos%22%2C%22start_url%22%3A%22.%2Ffinpare.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F0%22%2C%22theme_color%22%3A%22%231A3A30%22%7D">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Manejo+de+Gastos%22%2C%22short_name%22%3A%22ManejoGastos%22%2C%22start_url%22%3A%22%2Ffinpare.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F0%22%2C%22theme_color%22%3A%22%231A3A30%22%7D">
 <title>Manejo de Gastos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
 <script>
 window.SUPABASE_URL  = "https://djyifewdltjnwbvkwrhv.supabase.co";
 window.SUPABASE_KEY  = "sb_publishable_a3U_ts937IiXBmf8H9TGbg_7DCPTz16";
-window.APP_VERSION   = "3.4";
+window.APP_VERSION   = "3.5";
 </script>
 
 <style>
@@ -28,9 +28,9 @@ window.APP_VERSION   = "3.4";
   --coral:#E07856; --coral-soft:#FBE3DA;
   --danger:#B83030; --danger-soft:#FCEDEC;
   --ok:#2D7A52; --ok-soft:#D6EDDF;
-  /* Personas: paleta neutra (verde primario / dorado profundo) */
-  --a:#1A3A30; --a-soft:#E6EEEB;
-  --b:#8B6A1F; --b-soft:#F5E9CC;
+  /* Personas: Martín=dorado, Clem=verde */
+  --a:#8B6A1F; --a-soft:#F5E9CC;
+  --b:#1A3A30; --b-soft:#E6EEEB;
   --common:#2D7A52; --common-soft:#D6EDDF;
   --text:#1A1A1A; --text-2:#555555; --text-3:#909090;
   --border:#E8E2D4; --border-soft:#F0EBDF;
@@ -229,11 +229,12 @@ button{font-family:inherit;}
 /* Modal */
 .mov{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity 0.22s;}
 .mov.open{opacity:1;pointer-events:all;}
-.msh{background:white;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);padding-bottom:max(env(safe-area-inset-bottom,16px),16px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.msh{background:white;border-radius:24px 24px 0 0;width:100%;max-height:92vh;overflow-y:auto;overflow-x:hidden;transform:translateY(100%);transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);padding-bottom:max(env(safe-area-inset-bottom,16px),16px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
 .mov.open .msh{transform:translateY(0);}
 .msh.dragging{transition:none;}
 body.modal-open{overflow:hidden;position:fixed;width:100%;}
-.mh-zone{padding:8px 0 4px;cursor:grab;touch-action:none;}
+/* Zona del tirador: solo vertical, no horizontal */
+.mh-zone{padding:8px 0 4px;cursor:grab;touch-action:pan-y;}
 .mh-zone:active{cursor:grabbing;}
 .mh{width:40px;height:4px;background:var(--border);border-radius:2px;margin:8px auto;}
 .mhdr{padding:0 18px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-soft);}
@@ -665,10 +666,10 @@ const CATEGORIES = [
   {k:'restaurante',i:'🍽️',l:'Resto'}, {k:'transporte',i:'🚗',l:'Transp.'},
   {k:'salud',i:'💊',l:'Salud'}, {k:'ocio',i:'🎬',l:'Ocio'},
   {k:'energia',i:'⚡',l:'Energía'}, {k:'gas',i:'🔥',l:'Gas'},
-  {k:'internet',i:'📡',l:'Internet'}, {k:'servicios',i:'💡',l:'Otros'},
+  {k:'internet',i:'📡',l:'Internet'}, {k:'servicios',i:'🔧',l:'Servicios'},
   {k:'viaje',i:'✈️',l:'Viaje'}, {k:'ropa',i:'👕',l:'Ropa'},
   {k:'belleza',i:'💄',l:'Belleza'}, {k:'regalo',i:'🎁',l:'Regalo'},
-  {k:'otro',i:'📦',l:'Otro'},
+  {k:'suscripcion',i:'📱',l:'Suscrip.'}, {k:'otro',i:'📦',l:'Otro'},
 ];
 
 // ===== HELPERS =====
@@ -929,7 +930,7 @@ function calc(){
   }
   let rA=0.5,rB=0.5;
   if(dist==='proportional'&&(baseA+baseB)>0){rA=baseA/(baseA+baseB);rB=1-rA;}
-  const shared=S.expenses.filter(e=>e.type==='shared');
+  const shared=S.expenses.filter(e=>e.type==='shared'); // personales nunca entran aquí
   const totalShared=shared.reduce((s,e)=>s+(+e.amount),0);
   const oblA=totalShared*rA, oblB=totalShared*rB;
   const paidPersA=shared.filter(e=>e.paid_by==='a').reduce((s,e)=>s+(+e.amount),0);
@@ -1048,7 +1049,8 @@ window.setGTab=function(tab){
 
 function renderExpList(){
   // Fijos
-  const fxItems=S.expenses.filter(e=>e.is_fixed===true).sort((a,b)=>(a.description||'').localeCompare(b.description||''));
+  // FIJOS COMPARTIDOS (solo type=shared) → sección "Fijos del mes"
+  const fxItems=S.expenses.filter(e=>e.is_fixed===true&&e.type==='shared').sort((a,b)=>(a.description||'').localeCompare(b.description||''));
   const fxEl=document.getElementById('fix-list');
   if(fxEl){
     if(!fxItems.length){
@@ -1068,10 +1070,10 @@ function renderExpList(){
   // Variables compartidos
   const sharedVar=S.expenses.filter(e=>!e.is_fixed&&e.type==='shared').sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   renderExpItems('exp-list-shared',sharedVar);
-  // Personales según pestaña
+  // Personales (incluyendo fijos personales) según pestaña
   let personalItems=[];
-  if(S.gTab==='a')personalItems=S.expenses.filter(e=>!e.is_fixed&&e.type==='personal'&&e.paid_by==='a');
-  else if(S.gTab==='b')personalItems=S.expenses.filter(e=>!e.is_fixed&&e.type==='personal'&&e.paid_by==='b');
+  if(S.gTab==='a')personalItems=S.expenses.filter(e=>e.type==='personal'&&e.paid_by==='a');
+  else if(S.gTab==='b')personalItems=S.expenses.filter(e=>e.type==='personal'&&e.paid_by==='b');
   personalItems.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   renderExpItems('exp-list-personal',personalItems);
   const ptEl=document.getElementById('personal-total');
@@ -1079,15 +1081,15 @@ function renderExpList(){
     ptEl.style.display=personalItems.length?'block':'none';
     document.getElementById('personal-total-amt').textContent=eur(personalItems.reduce((s,e)=>s+(+e.amount||0),0));
   }
-  // Totales común
-  const totalFijos=S.expenses.filter(e=>e.is_fixed).reduce((s,e)=>s+(+e.amount||0),0);
+  // Totales común (solo shared)
+  const totalFijosShared=fxItems.reduce((s,e)=>s+(+e.amount||0),0);
   const totalVars=sharedVar.reduce((s,e)=>s+(+e.amount||0),0);
   const gtEl=document.getElementById('gastos-totales');
   if(gtEl){
     gtEl.style.display='block';
-    document.getElementById('total-fijos').textContent=eur(totalFijos);
+    document.getElementById('total-fijos').textContent=eur(totalFijosShared);
     document.getElementById('total-variables').textContent=eur(totalVars);
-    document.getElementById('total-mes-gastos').textContent=eur(totalFijos+totalVars);
+    document.getElementById('total-mes-gastos').textContent=eur(totalFijosShared+totalVars);
   }
   // Aportes
   const conItems=[...S.contribs].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -1279,10 +1281,10 @@ window.setExpType=function(t){
   document.getElementById('pb-common').style.display=(t==='personal')?'none':'';
   document.getElementById('affects-base-wrap').classList.toggle('hidden',t!=='personal');
   if(t==='personal'&&S.paidBy==='common'){S.paidBy=null;document.querySelectorAll('[data-who]').forEach(o=>o.classList.remove('active'));}
-  if(t==='personal'){
-    if(S.isFixedFlow)toggleIsFixed();
+  // Los personales sí pueden ser fijos — solo ocultamos fixed-flow si viene de subtab personal (forcePersonal)
+  if(S.forcePersonal){
     document.getElementById('fixed-flow-wrap').classList.add('hidden');
-  }else if(!S.forcePersonal){
+  }else{
     document.getElementById('fixed-flow-wrap').classList.remove('hidden');
   }
 };
@@ -1302,7 +1304,7 @@ window.toggleIsFixed=function(){
   S.isFixedFlow=!S.isFixedFlow;
   document.getElementById('tg-isfixed').classList.toggle('on',S.isFixedFlow);
   document.getElementById('repeat-value-wrap').classList.toggle('hidden',!S.isFixedFlow);
-  if(S.isFixedFlow&&S.expType!=='shared')setExpType('shared');
+  // No forzar shared — un personal fijo sigue siendo personal
 };
 window.toggleRepeatValue=function(){S.repeatValue=!S.repeatValue;document.getElementById('tg-repeat').classList.toggle('on',S.repeatValue);};
 
@@ -1685,32 +1687,49 @@ window.closeM=function(id){
   if(!document.querySelector('.mov.open'))document.body.classList.remove('modal-open');
 };
 
-// Drag tirador para cerrar
+// Drag tirador para cerrar — solo vertical, no interfiere con scroll interno
 function initModalDrag(){
   document.querySelectorAll('.mov').forEach(mov=>{
     mov.addEventListener('click',e=>{if(e.target===mov)closeM(mov.id);});
   });
   document.querySelectorAll('.mh-zone').forEach(zone=>{
     const modalId=zone.dataset.dragClose;
-    const sheet=document.querySelector(`#${modalId} .msh`);
+    const mov=document.getElementById(modalId);
+    const sheet=mov?.querySelector('.msh');
     if(!sheet)return;
-    let startY=0,currentY=0,startTime=0,dragging=false;
-    const onStart=(y)=>{startY=y;currentY=y;startTime=Date.now();dragging=true;sheet.classList.add('dragging');};
-    const onMove=(y)=>{if(!dragging)return;currentY=y;const dy=Math.max(0,currentY-startY);sheet.style.transform=`translateY(${dy}px)`;};
-    const onEnd=()=>{
-      if(!dragging)return;
-      dragging=false;
+    let startY=0,startTime=0,lastY=0,active=false;
+
+    zone.addEventListener('touchstart',e=>{
+      startY=e.touches[0].clientY;
+      lastY=startY;
+      startTime=Date.now();
+      active=true;
+      sheet.classList.add('dragging');
+    },{passive:true});
+
+    zone.addEventListener('touchmove',e=>{
+      if(!active)return;
+      lastY=e.touches[0].clientY;
+      const dy=Math.max(0,lastY-startY);
+      sheet.style.transform=`translateY(${dy}px)`;
+    },{passive:true});
+
+    zone.addEventListener('touchend',()=>{
+      if(!active)return;
+      active=false;
       sheet.classList.remove('dragging');
-      const dy=Math.max(0,currentY-startY);
-      const dt=Date.now()-startTime;
-      const velocity=dy/Math.max(dt,1);
+      const dy=Math.max(0,lastY-startY);
+      const dt=Math.max(1,Date.now()-startTime);
+      const vel=dy/dt;
       sheet.style.transform='';
-      if(dy>100||velocity>0.6)closeM(modalId);
-    };
-    zone.addEventListener('touchstart',e=>onStart(e.touches[0].clientY),{passive:true});
-    zone.addEventListener('touchmove',e=>onMove(e.touches[0].clientY),{passive:true});
-    zone.addEventListener('touchend',onEnd);
-    zone.addEventListener('touchcancel',onEnd);
+      if(dy>80||vel>0.5)closeM(modalId);
+    });
+
+    zone.addEventListener('touchcancel',()=>{
+      active=false;
+      sheet.classList.remove('dragging');
+      sheet.style.transform='';
+    });
   });
 }
 
@@ -1723,8 +1742,8 @@ function initSwipeDelete(container){
     const bg=wrap?.querySelector('.swipe-bg');
     let startX=0,startY=0,dx=0;
     let swiping=false,locked=false,armed=false,lastArmed=false;
-    const ANCHOR=80;          // resistencia tras este punto
-    const ARM_THRESHOLD=130;  // umbral para confirmar
+    const ANCHOR=80;
+    const ARM_THRESHOLD=130;
     const vibrate=(ms)=>{if(navigator.vibrate)try{navigator.vibrate(ms);}catch(e){}};
     let suppressClick=false;
 
@@ -1741,12 +1760,20 @@ function initSwipeDelete(container){
       const curX=e.touches[0].clientX, curY=e.touches[0].clientY;
       const ndx=curX-startX, ndy=Math.abs(curY-startY);
       if(!swiping){
-        if(Math.abs(ndx)<10)return;
-        if(ndy>Math.abs(ndx)*1.4){locked=true;return;}
+        if(Math.abs(ndx)<8)return;
+        // Si más vertical que horizontal → scroll normal, no swipe
+        if(ndy>Math.abs(ndx)){locked=true;return;}
         swiping=true;
       }
+      // Solo izquierda
+      if(ndx>=0){
+        item.style.transform='';
+        if(bg)bg.classList.remove('armed');
+        return;
+      }
       dx=ndx; suppressClick=true;
-      if(dx>=0){item.style.transform='';if(bg)bg.classList.remove('armed');return;}
+      // Prevenir scroll vertical mientras se hace swipe horizontal
+      e.preventDefault();
       let translate=dx;
       if(dx<-ANCHOR){const over=-dx-ANCHOR;translate=-ANCHOR-over*0.4;}
       item.style.transform=`translateX(${translate}px)`;
@@ -1756,10 +1783,10 @@ function initSwipeDelete(container){
         if(bg)bg.classList.toggle('armed',nowArmed);
         if(nowArmed)vibrate(30);
       }
-    },{passive:true});
+    },{passive:false});
 
     item.addEventListener('touchend',async()=>{
-      if(!swiping){return;}
+      if(!swiping)return;
       item.classList.add('snap');
       if(armed){
         const id=item.dataset.id, kind=item.dataset.kind;
