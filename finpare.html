@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, orientation=portrait">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="ManejoGastos">
 <meta name="theme-color" content="#1A3A30">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect fill='%231A3A30' width='180' height='180' rx='40'/%3E%3Ctext x='50%25' y='54%25' font-size='90' text-anchor='middle' dominant-baseline='middle'%3E🌿%3C/text%3E%3C/svg%3E">
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Manejo+de+Gastos%22%2C%22short_name%22%3A%22ManejoGastos%22%2C%22start_url%22%3A%22%2Ffinpare.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F0%22%2C%22theme_color%22%3A%22%231A3A30%22%7D">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Manejo+de+Gastos%22%2C%22short_name%22%3A%22ManejoGastos%22%2C%22start_url%22%3A%22%2Ffinpare.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FAF7F0%22%2C%22theme_color%22%3A%22%231A3A30%22%2C%22orientation%22%3A%22portrait%22%7D">
 <title>Manejo de Gastos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
 <script>
 window.SUPABASE_URL  = "https://djyifewdltjnwbvkwrhv.supabase.co";
 window.SUPABASE_KEY  = "sb_publishable_a3U_ts937IiXBmf8H9TGbg_7DCPTz16";
-window.APP_VERSION   = "3.6.2";
+window.APP_VERSION   = "3.7";
 </script>
 
 <style>
@@ -261,6 +261,25 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
 .two-grid .three-opt.active.b{border-color:var(--b);background:var(--b-soft);color:var(--b);}
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;}
 .cat-opt{aspect-ratio:1;border-radius:var(--r-sm);border:2px solid var(--border);background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;font-size:10px;font-weight:600;transition:all 0.15s;color:var(--text-2);}
+/* Cats expandibles */
+.cat-more-btn{width:100%;padding:8px;border-radius:var(--r-sm);border:1.5px dashed var(--border);background:transparent;color:var(--text-3);font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.15s;margin-top:4px;}
+.cat-more-btn:active{background:var(--bg-soft);}
+.cat-extra-grid{display:none;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+.cat-extra-grid.open{display:grid;}
+.cat-section-label{font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-3);padding:4px 2px 2px;width:100%;}
+/* Toggle fijo: estilo dorado/acento (distinto del verde estándar) */
+.toggle-fixed{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border-radius:var(--r-sm);background:var(--accent-soft);border:1.5px solid #D4B896;}
+.toggle-fixed .toggle-t{font-size:14px;font-weight:700;color:var(--accent-deep);}
+.toggle-fixed .toggle-d{font-size:12px;color:var(--accent-deep);opacity:0.75;margin-top:2px;}
+.tg-fixed{position:relative;width:44px;height:26px;background:#D4B896;border-radius:13px;cursor:pointer;flex-shrink:0;transition:background 0.2s;}
+.tg-fixed::after{content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:11px;background:white;box-shadow:0 1px 4px rgba(0,0,0,0.2);transition:left 0.2s;}
+.tg-fixed.on{background:var(--accent-deep);}
+.tg-fixed.on::after{left:20px;}
+/* Bloqueo landscape en móvil */
+@media screen and (orientation:landscape) and (max-height:500px){
+  body::before{content:'↩️  Gira el móvil';display:flex;align-items:center;justify-content:center;position:fixed;inset:0;background:var(--primary);color:white;font-size:20px;font-weight:600;z-index:9999;font-family:'DM Sans',sans-serif;}
+  #app,#setup{display:none!important;}
+}
 .cat-opt.active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary);}
 .cat-opt-i{font-size:22px;}
 
@@ -516,15 +535,15 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
         <div class="fg"><label>Categoría</label><div class="cat-grid" id="cat-grid"></div></div>
         <div class="fg"><label>Fecha</label><input type="date" id="exp-date"></div>
         <div id="affects-base-wrap" class="hidden" style="margin-bottom:16px">
-          <div class="toggle" onclick="toggleAffectsBase()">
-            <div class="toggle-info"><div class="toggle-t">Restar de mi ingreso</div><div class="toggle-d">Solo aplica si "Restar gastos individuales" está activo</div></div>
+          <div class="toggle" style="background:var(--primary-soft);border:1.5px solid var(--primary-mid);" onclick="toggleAffectsBase()">
+            <div class="toggle-info"><div class="toggle-t" style="color:var(--primary);">📊 Restar de mi ingreso</div><div class="toggle-d" style="color:var(--primary-mid);">Solo aplica si "Restar gastos individuales" está activo</div></div>
             <div class="tg" id="tg-affects"></div>
           </div>
         </div>
         <div style="margin-bottom:12px;border-top:1px solid var(--border);padding-top:14px;" id="fixed-flow-wrap">
-          <div class="toggle" onclick="toggleIsFixed()">
-            <div class="toggle-info"><div class="toggle-t">Es un gasto fijo del mes</div><div class="toggle-d">Aparecerá automáticamente cada mes</div></div>
-            <div class="tg" id="tg-isfixed"></div>
+          <div class="toggle-fixed" onclick="toggleIsFixed()">
+            <div class="toggle-info"><div class="toggle-t">📌 Fijo cada mes</div><div class="toggle-d">Se repetirá automáticamente cada mes</div></div>
+            <div class="tg-fixed" id="tg-isfixed"></div>
           </div>
         </div>
         <div id="repeat-value-wrap" class="hidden" style="margin-bottom:16px;">
@@ -661,6 +680,7 @@ const S = {
   editingId:null, editingKind:null, editingTpl:null,
   imCtx:null, confirmCtx:null,
   carryoverChecked:new Set(), gTab:'common', silenceRealtime:false,
+  recentCats:[],
 };
 
 const CATEGORIES = [
@@ -1269,7 +1289,7 @@ function resetAddModal(){
   document.getElementById('con-delete-zone').classList.add('hidden');
   document.getElementById('exp-save-btn').textContent='Guardar gasto';
   document.getElementById('con-save-btn').textContent='Registrar aporte';
-  refreshCatGrid();
+  buildCatGrid();
 }
 
 window.openAddExpense=function(typeHint=null){
@@ -1340,10 +1360,51 @@ window.toggleIsFixed=function(){
 window.toggleRepeatValue=function(){S.repeatValue=!S.repeatValue;document.getElementById('tg-repeat').classList.toggle('on',S.repeatValue);};
 
 function buildCatGrid(){
-  document.getElementById('cat-grid').innerHTML=CATEGORIES.map(c=>`<div class="cat-opt" data-cat="${c.k}" onclick="setCat('${c.k}')"><div class="cat-opt-i">${c.i}</div><div>${c.l}</div></div>`).join('');
+  // Categorías siempre visibles (primeras 8, más usadas/comunes)
+  const VISIBLE_CATS = ['hogar','super','restaurante','transporte','salud','ocio','energia','gas'];
+  const EXTRA_CATS   = ['internet','servicios','viaje','ropa','belleza','regalo','suscripcion','otro'];
+
+  // Obtener recientes del estado (hasta 3, sin repetir las VISIBLE)
+  const recent = (S.recentCats||[]).filter(k=>EXTRA_CATS.includes(k)).slice(0,3);
+
+  const catHtml = c => `<div class="cat-opt" data-cat="${c.k}" onclick="setCat('${c.k}')"><div style="font-size:18px">${c.i}</div><div>${c.l}</div></div>`;
+
+  const visibleHtml = VISIBLE_CATS.map(k=>catHtml(CATEGORIES.find(x=>x.k===k)||CATEGORIES[15])).join('');
+
+  const recentHtml = recent.length
+    ? `<div class="cat-section-label">Usadas recientes</div>` + recent.map(k=>catHtml(CATEGORIES.find(x=>x.k===k)||CATEGORIES[15])).join('')
+    : '';
+
+  const extraHtml = EXTRA_CATS.map(k=>catHtml(CATEGORIES.find(x=>x.k===k)||CATEGORIES[15])).join('');
+
+  document.getElementById('cat-grid').innerHTML =
+    visibleHtml +
+    (recentHtml ? recentHtml : '') +
+    `<button class="cat-more-btn" id="cat-more-btn" onclick="toggleCatExtra()">▾ Más categorías</button>` +
+    `<div class="cat-extra-grid" id="cat-extra-grid">${extraHtml}</div>`;
+
+  refreshCatGrid();
 }
+window.toggleCatExtra=function(){
+  const g=document.getElementById('cat-extra-grid');
+  const b=document.getElementById('cat-more-btn');
+  if(!g)return;
+  const open=g.classList.toggle('open');
+  if(b)b.textContent=open?'▴ Menos categorías':'▾ Más categorías';
+};
 function refreshCatGrid(){document.querySelectorAll('[data-cat]').forEach(o=>o.classList.toggle('active',o.dataset.cat===S.expCat));}
-window.setCat=function(c){S.expCat=c;refreshCatGrid();};
+window.setCat=function(c){
+  S.expCat=c;
+  // Guardar en recientes (las "extra" que se usan)
+  const EXTRA_CATS=['internet','servicios','viaje','ropa','belleza','regalo','suscripcion','otro'];
+  if(EXTRA_CATS.includes(c)){
+    S.recentCats=S.recentCats||[];
+    S.recentCats=S.recentCats.filter(k=>k!==c);
+    S.recentCats.unshift(c);
+    if(S.recentCats.length>3)S.recentCats=S.recentCats.slice(0,3);
+  }
+  refreshCatGrid();
+};
 
 window.setConDest=function(dest){
   S.conDest=dest;
@@ -1501,7 +1562,14 @@ window.showExpDetail=function(id){
   document.getElementById('tg-isfixed').classList.toggle('on',S.isFixedFlow);
   document.getElementById('repeat-value-wrap').classList.toggle('hidden',!S.isFixedFlow);
   document.getElementById('tg-repeat').classList.toggle('on',S.repeatValue);
-  refreshCatGrid();
+  buildCatGrid();
+  // Si la categoría está en las extras, abrirlas automáticamente
+  const EXTRA_CATS=['internet','servicios','viaje','ropa','belleza','regalo','suscripcion','otro'];
+  if(EXTRA_CATS.includes(S.expCat)){
+    const g=document.getElementById('cat-extra-grid');
+    const b=document.getElementById('cat-more-btn');
+    if(g){g.classList.add('open');if(b)b.textContent='▴ Menos categorías';}
+  }
   document.getElementById('exp-save-btn').textContent='Guardar cambios';
   document.getElementById('exp-delete-zone').classList.remove('hidden');
   openModal('add-modal');
@@ -1933,8 +2001,11 @@ window.confirmResolve=function(val){
   closeM('confirm-modal');
 };
 
+// ===== VERSION v3.7 — 2026-05-04 CET =====
+// Fix: is_personal → SQL requerido en Supabase (ver instrucciones)
+// Nuevo: orientación portrait bloqueada, cats expandibles con recientes, toggles diferenciados
+
 // ===== START =====
-// Versión 3.6.2 — 2026-05-04
 // Si la librería de Supabase (esm.sh) no carga en 10s, mostramos error con botón de recarga
 let _started=false;
 function _startOnce(){if(_started)return;_started=true;start();}
