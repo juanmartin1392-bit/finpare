@@ -17,7 +17,7 @@
 <script>
 window.SUPABASE_URL  = "https://djyifewdltjnwbvkwrhv.supabase.co";
 window.SUPABASE_KEY  = "sb_publishable_a3U_ts937IiXBmf8H9TGbg_7DCPTz16";
-window.APP_VERSION   = "3.5";
+window.APP_VERSION   = "3.6.2";
 </script>
 
 <style>
@@ -30,7 +30,7 @@ window.APP_VERSION   = "3.5";
   --ok:#2D7A52; --ok-soft:#D6EDDF;
   /* Personas: Martín=dorado, Clem=verde */
   --a:#8B6A1F; --a-soft:#F5E9CC;
-  --b:#1A3A30; --b-soft:#E6EEEB;
+  --b:#1E7A4E; --b-soft:#D4F0E2;
   --common:#2D7A52; --common-soft:#D6EDDF;
   --text:#1A1A1A; --text-2:#555555; --text-3:#909090;
   --border:#E8E2D4; --border-soft:#F0EBDF;
@@ -40,7 +40,8 @@ window.APP_VERSION   = "3.5";
   --shadow-3:0 8px 32px rgba(20,40,30,0.16);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);overflow:hidden;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+html{height:100%;height:-webkit-fill-available;}
+body{height:100%;min-height:-webkit-fill-available;background:var(--bg);font-family:'DM Sans',system-ui,sans-serif;color:var(--text);overflow:hidden;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;}
 button{font-family:inherit;}
 
 /* Setup / Error */
@@ -69,7 +70,7 @@ button{font-family:inherit;}
 .hidden{display:none!important;}
 
 /* App shell */
-#app{display:flex;flex-direction:column;height:100vh;}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
 #app.hidden{display:none;}
 .topbar{background:var(--primary);background-image:linear-gradient(180deg,#244742 0%,var(--primary) 100%);padding:max(env(safe-area-inset-top),44px) 18px 14px;flex-shrink:0;position:relative;}
 .topbar-row{display:flex;align-items:center;justify-content:space-between;}
@@ -282,7 +283,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;}
   <div class="setup-card hidden" id="setup-conn-err-wrap">
     <h2>No se pudo conectar</h2>
     <div class="setup-err" id="setup-conn-err"></div>
-    <button class="btn" onclick="location.reload()">Reintentar</button>
+    <button class="btn" onclick="bootstrap(1)" style="margin-bottom:10px;">🔄 Reintentar</button>
+    <button class="btn outline" onclick="location.reload()">Recargar app</button>
   </div>
 </div>
 
@@ -704,10 +706,14 @@ function start(){
   bootstrap();
 }
 
-async function bootstrap(){
+async function bootstrap(attempt){
+  attempt=attempt||1;
   try{
-    document.getElementById('setup-loading-msg').textContent='Conectando…';
-    const {data,error} = await withTimeout(S.sb.from('settings').select('*').limit(1).maybeSingle(),9000,'settings');
+    const msgs=['Conectando…','Reintentando…','Último intento…'];
+    document.getElementById('setup-loading-msg').textContent=msgs[Math.min(attempt-1,2)];
+    document.getElementById('setup-loading').classList.remove('hidden');
+    document.getElementById('setup-conn-err-wrap').classList.add('hidden');
+    const {data,error} = await withTimeout(S.sb.from('settings').select('*').limit(1).maybeSingle(),12000,'settings');
     if(error)throw error;
     S.settings = data;
     if(!S.settings){
@@ -715,14 +721,20 @@ async function bootstrap(){
         id:1,user_a_name:'Juan Martín',user_b_name:'Clémentine',
         default_rent:800,default_distribution:'proportional',
         default_use_net_base:false,rent_payer:'b'
-      }),9000,'create');
+      }),12000,'create');
       if(r.error)throw r.error;
       S.settings={id:1,user_a_name:'Juan Martín',user_b_name:'Clémentine',default_rent:800,default_distribution:'proportional',default_use_net_base:false,rent_payer:'b'};
     }
     showApp();
   }catch(e){
-    console.error(e);
-    showConnErr(e.message?.startsWith('Timeout')?'No hay respuesta de Supabase. Revisa tu conexión a internet y reintenta.':(e.message||'Error al conectar.'));
+    console.error('bootstrap attempt '+attempt,e);
+    if(attempt<3){
+      // Reintento automático con pequeña pausa
+      document.getElementById('setup-loading-msg').textContent='Reintentando ('+(attempt+1)+'/3)…';
+      setTimeout(()=>bootstrap(attempt+1),2000);
+    }else{
+      showConnErr(e.message?.startsWith('Timeout')?'Sin respuesta del servidor. Revisa tu conexión y pulsa Reintentar.':(e.message||'Error al conectar.'));
+    }
   }
 }
 
@@ -748,7 +760,15 @@ async function showApp(){
       .subscribe();
     S.channels.push(chT);
   }
-  await loadMonth();
+  try{
+    await Promise.race([
+      loadMonth(),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout cargando mes')),15000))
+    ]);
+  }catch(e){
+    console.error('loadMonth error:',e);
+    // Continuar aunque haya fallo parcial — la app se muestra de todas formas
+  }
   subscribeMonth();
   S.ready=true;
   render();
@@ -808,12 +828,22 @@ async function ensureFixedExpensesForMonth(){
   const rows=S.template.map(t=>({
     month:S.month,
     amount:(t.repeat_value===false)?0:(+t.amount||0),
-    description:t.name,date:today,category:t.category,type:'shared',paid_by:t.paid_by,
+    description:t.name,date:today,category:t.category,
+    type:t.is_personal?'personal':'shared',
+    paid_by:t.paid_by,
     is_fixed:true,is_rent:false,affects_income_base:false,template_id:t.id
   }));
   try{
     const ins=await S.sb.from('expenses').insert(rows).select();
-    if(ins.error)throw ins.error;
+    if(ins.error){
+      // Si es error de duplicado (constraint UNIQUE month+template_id), recargar y continuar
+      if(ins.error.code==='23505'||ins.error.message?.includes('duplicate')||ins.error.message?.includes('unique')){
+        const exp=await S.sb.from('expenses').select('*').eq('month',S.month).order('date',{ascending:false});
+        if(!exp.error)S.expenses=exp.data||[];
+        return;
+      }
+      throw ins.error;
+    }
     if(ins.data)S.expenses=[...ins.data,...S.expenses];
   }catch(e){console.error('ensureFixed:',e);}
 }
@@ -995,7 +1025,7 @@ function renderStatus(c){
   const el=document.getElementById('status-rows');
   if(c.totalShared===0){el.innerHTML=`<div style="font-size:13px;color:var(--text-3);text-align:center;padding:8px 0">Sin gastos compartidos aún</div>`;return;}
   function row(role,name,oblig,paid){
-    const pct=oblig>0?Math.min(100,Math.round((paid/oblig)*100)):0;
+    const pct=oblig>0?Math.min(100,Math.max(0,Math.round((paid/oblig)*100))):0;
     const full=pct>=100;
     return `<div class="st-row"><div class="st-avatar ${role}">${name[0].toUpperCase()}</div><div class="st-info"><div class="st-name">${name}</div><div class="st-progress"><div class="st-track"><div class="st-fill ${full?'full':role}" style="width:${pct}%"></div></div><div class="st-pct">${pct}%</div></div><div class="st-amt">Aportado <strong>${eur(paid)}</strong> de <strong>${eur(oblig)}</strong></div></div></div>`;
   }
@@ -1007,9 +1037,13 @@ function renderCommon(c){
   const cls=c.commonBalance<-0.5?'neg':(c.commonBalance>0.5?'pos':'');
   let detail;
   if(c.commonBalance<-0.5)detail=`Faltan ${eur(Math.abs(c.commonBalance))} para cubrir gastos`;
-  else if(c.commonBalance>0.5)detail=`Sobran ${eur(c.commonBalance)} (irán al mes siguiente)`;
+  else if(c.commonBalance>0.5)detail=`Sobran ${eur(c.commonBalance)} → pasarán al mes siguiente`;
   else detail=`Aportaciones y gastos cuadran`;
-  el.innerHTML=`<div class="cm-icon">🏦</div><div class="cm-info"><div class="cm-label">Saldo previsto</div><div class="cm-amount ${cls}">${eur(c.commonBalance)}</div><div class="cm-detail">${detail}</div></div>`;
+  // Detectar si hay saldo del mes anterior incluido
+  const carryoverCons=S.contribs.filter(c=>c.note==='Mes anterior');
+  const carryoverTotal=carryoverCons.reduce((s,c)=>s+(+c.amount),0);
+  const carryoverHtml=carryoverTotal>0.5?`<div style="margin-top:10px;padding:8px 12px;background:var(--primary-soft);border-radius:var(--r-xs);font-size:12px;color:var(--primary);display:flex;justify-content:space-between;align-items:center;"><span>📅 Saldo del mes anterior</span><strong>${eur(carryoverTotal)}</strong></div>`:'';
+  el.innerHTML=`<div class="cm-icon">🏦</div><div class="cm-info"><div class="cm-label">Saldo previsto</div><div class="cm-amount ${cls}">${eur(c.commonBalance)}</div><div class="cm-detail">${detail}</div>${carryoverHtml}</div>`;
 }
 
 function renderResumen(c){
@@ -1126,7 +1160,8 @@ function renderExpItems(containerId,items){
     const tagL=it.type==='shared'?'Compartido':'Personal';
     const who=it.paid_by==='common'?'Cta. común':nameOf(it.paid_by);
     const whoTag=it.paid_by==='common'?'common':it.paid_by;
-    return `<div class="swipe-wrap"><div class="swipe-bg"><span class="swipe-icon">🗑️</span></div><div class="swipe-item exp" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp"><div class="exp-cat">${cat.i}</div><div class="exp-info"><div class="exp-desc">${escapeHtml(it.description||cat.l)}</div><div class="exp-meta"><span class="tag ${tag}">${tagL}</span><span class="tag ${whoTag}">${who}</span><span>${fdate(it.date)}</span></div></div><div class="exp-amt">${eur(it.amount)}</div></div></div>`;
+    const fixedTag=it.is_fixed?`<span class="tag" style="background:var(--primary-soft);color:var(--primary);font-size:9px;">Fijo</span>`:'';
+    return `<div class="swipe-wrap"><div class="swipe-bg"><span class="swipe-icon">🗑️</span></div><div class="swipe-item exp" onclick="showExpDetail('${it.id}')" data-id="${it.id}" data-kind="exp"><div class="exp-cat">${cat.i}</div><div class="exp-info"><div class="exp-desc">${escapeHtml(it.description||cat.l)}</div><div class="exp-meta"><span class="tag ${tag}">${tagL}</span>${fixedTag}<span class="tag ${whoTag}">${who}</span><span>${fdate(it.date)}</span></div></div><div class="exp-amt">${eur(it.amount)}</div></div></div>`;
   }).join('');
   initSwipeDelete(el);
 }
@@ -1257,7 +1292,7 @@ window.openAddPersonal=function(){
   setPaidBy(S.gTab);
   document.getElementById('exp-type-wrap').classList.add('hidden');
   document.getElementById('paidby-wrap').classList.add('hidden');
-  document.getElementById('fixed-flow-wrap').classList.add('hidden');
+  // fixed-flow-wrap se muestra (personales PUEDEN ser fijos)
   openModal('add-modal');
 };
 
@@ -1281,12 +1316,8 @@ window.setExpType=function(t){
   document.getElementById('pb-common').style.display=(t==='personal')?'none':'';
   document.getElementById('affects-base-wrap').classList.toggle('hidden',t!=='personal');
   if(t==='personal'&&S.paidBy==='common'){S.paidBy=null;document.querySelectorAll('[data-who]').forEach(o=>o.classList.remove('active'));}
-  // Los personales sí pueden ser fijos — solo ocultamos fixed-flow si viene de subtab personal (forcePersonal)
-  if(S.forcePersonal){
-    document.getElementById('fixed-flow-wrap').classList.add('hidden');
-  }else{
-    document.getElementById('fixed-flow-wrap').classList.remove('hidden');
-  }
+  // Los personales SÍ pueden ser fijos — siempre mostramos el toggle
+  document.getElementById('fixed-flow-wrap').classList.remove('hidden');
 };
 window.setPaidBy=function(p){S.paidBy=p;document.querySelectorAll('[data-who]').forEach(o=>o.classList.toggle('active',o.dataset.who===p));};
 window.setCWho=function(p){
@@ -1373,7 +1404,8 @@ window.saveExpense=async function(){
         if(r.data)S.template=r.data;
       }else if(!wasFixed&&S.isFixedFlow){
         const sortMax=(S.template||[]).reduce((m,t)=>Math.max(m,t.sort_order||0),0);
-        const tplIns=await S.sb.from('fixed_template').insert({name:desc,category:S.expCat,amount:S.repeatValue?amt:0,paid_by:S.paidBy,sort_order:sortMax+1,repeat_value:S.repeatValue}).select().single();
+        const isPersonalFixed=S.expType==='personal';
+        const tplIns=await S.sb.from('fixed_template').insert({name:desc,category:S.expCat,amount:S.repeatValue?amt:0,paid_by:S.paidBy,sort_order:sortMax+1,repeat_value:S.repeatValue,is_personal:isPersonalFixed}).select().single();
         if(tplIns.data){
           await S.sb.from('expenses').update({template_id:tplIns.data.id}).eq('id',S.editingId);
           S.template=[...(S.template||[]),tplIns.data];
@@ -1385,10 +1417,11 @@ window.saveExpense=async function(){
     }
     if(S.isFixedFlow){
       const sortMax=(S.template||[]).reduce((m,t)=>Math.max(m,t.sort_order||0),0);
-      const tplIns=await S.sb.from('fixed_template').insert({name:desc,category:S.expCat,amount:S.repeatValue?amt:0,paid_by:S.paidBy,sort_order:sortMax+1,repeat_value:S.repeatValue}).select().single();
+      const isPersonalFixed=S.expType==='personal';
+      const tplIns=await S.sb.from('fixed_template').insert({name:desc,category:S.expCat,amount:S.repeatValue?amt:0,paid_by:S.paidBy,sort_order:sortMax+1,repeat_value:S.repeatValue,is_personal:isPersonalFixed}).select().single();
       if(tplIns.error)throw tplIns.error;
       S.template=[...(S.template||[]),tplIns.data];
-      const exp={month:S.month,amount:amt,description:desc,date,category:S.expCat,type:'shared',paid_by:S.paidBy,is_fixed:true,is_rent:false,affects_income_base:false,template_id:tplIns.data.id};
+      const exp={month:S.month,amount:amt,description:desc,date,category:S.expCat,type:isPersonalFixed?'personal':'shared',paid_by:S.paidBy,is_fixed:true,is_rent:false,affects_income_base:S.affectsBase,template_id:tplIns.data.id};
       const {error}=await S.sb.from('expenses').insert(exp);
       if(error)throw error;
       toast('✓ Fijo añadido');
@@ -1468,7 +1501,6 @@ window.showExpDetail=function(id){
   document.getElementById('tg-isfixed').classList.toggle('on',S.isFixedFlow);
   document.getElementById('repeat-value-wrap').classList.toggle('hidden',!S.isFixedFlow);
   document.getElementById('tg-repeat').classList.toggle('on',S.repeatValue);
-  if(S.expType==='personal')document.getElementById('fixed-flow-wrap').classList.add('hidden');
   refreshCatGrid();
   document.getElementById('exp-save-btn').textContent='Guardar cambios';
   document.getElementById('exp-delete-zone').classList.remove('hidden');
