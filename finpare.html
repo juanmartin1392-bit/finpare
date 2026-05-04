@@ -1934,8 +1934,19 @@ window.confirmResolve=function(val){
 };
 
 // ===== START =====
-if(window.sb!==undefined)start();
-else window.addEventListener('sb-ready',start);
+// Versión 3.6.2 — 2026-05-04
+// Si la librería de Supabase (esm.sh) no carga en 10s, mostramos error con botón de recarga
+let _started=false;
+function _startOnce(){if(_started)return;_started=true;start();}
+if(window.sb!==undefined)_startOnce();
+else window.addEventListener('sb-ready',_startOnce);
+setTimeout(()=>{
+  if(!_started){
+    document.getElementById('setup-loading').classList.add('hidden');
+    document.getElementById('setup-conn-err-wrap').classList.remove('hidden');
+    document.getElementById('setup-conn-err').textContent='No se pudo cargar la app. Comprueba tu conexión a internet.';
+  }
+},10000);
 </script>
 
 </body>
